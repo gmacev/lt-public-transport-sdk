@@ -1,0 +1,84 @@
+{
+  "name": "lt-public-transport-sdk",
+  "version": "1.0.0",
+  "description": "TypeScript SDK for real-time public transport data in Lithuanian cities. Provides vehicle GPS positions, GTFS routes, and stops from stops.lt.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:integration": "npx tsx scripts/test-error-handling.ts && npx tsx scripts/test-config-options.ts && npx tsx scripts/test-data-quality.ts && npx tsx scripts/test-city-specific.ts",
+    "lint": "eslint src",
+    "prepublishOnly": "npm run build"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./errors": {
+      "types": "./dist/errors.d.ts",
+      "import": "./dist/errors.js"
+    }
+  },
+  "author": {
+    "name": "Giedrius Macevičius",
+    "email": "gmacev@gmail.com",
+    "url": "https://github.com/gmacev/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gmacev/lt-public-transport-sdk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/gmacev/lt-public-transport-sdk/issues"
+  },
+  "homepage": "https://github.com/gmacev/lt-public-transport-sdk#readme",
+  "license": "MIT",
+  "keywords": [
+    "lithuania",
+    "public-transport",
+    "gtfs",
+    "real-time",
+    "gps",
+    "bus",
+    "trolleybus",
+    "vilnius",
+    "kaunas",
+    "klaipeda",
+    "stops-lt",
+    "transport-api",
+    "sdk"
+  ],
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@types/node": "^22.0.0",
+    "@types/yauzl-promise": "^4.0.1",
+    "@typescript-eslint/eslint-plugin": "^8.51.0",
+    "@typescript-eslint/parser": "^8.51.0",
+    "eslint": "^9.39.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.5.3",
+    "typescript-eslint": "^8.51.0",
+    "vitest": "^2.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "assets"
+  ],
+  "dependencies": {
+    "yauzl-promise": "^4.0.0",
+    "zod": "^4.3.4"
+  }
+}
