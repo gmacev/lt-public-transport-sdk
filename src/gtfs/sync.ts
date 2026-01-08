@@ -13,10 +13,19 @@ import { join } from 'node:path';
 
 import * as yauzl from 'yauzl-promise';
 
-import type { CityId, Route, Stop, SyncResult } from '../types.js';
+import type { CityId, Route, Stop, Trip, ShapePoint, Calendar, CalendarDate, Agency, StopTime, SyncResult } from '../types.js';
 import { CITY_CONFIGS } from '../config.js';
 import { GtfsSyncError } from '../errors.js';
-import { parseRoutesContent, parseStopsContent } from './parser.js';
+import { 
+  parseRoutesContent, 
+  parseStopsContent,
+  parseTripsContent,
+  parseShapesContent,
+  parseCalendarContent,
+  parseCalendarDatesContent,
+  parseAgencyContent,
+  parseStopTimesContent,
+} from './parser.js';
 
 // =============================================================================
 // Cache Types
@@ -34,6 +43,18 @@ interface CacheMeta {
   routeCount: number;
   /** Number of stops in cache */
   stopCount: number;
+  /** Number of trips in cache */
+  tripCount: number;
+  /** Number of shapes in cache */
+  shapeCount: number;
+  /** Number of calendar entries in cache */
+  calendarCount: number;
+  /** Number of calendar date exceptions in cache */
+  calendarDateCount: number;
+  /** Number of agencies in cache */
+  agencyCount: number;
+  /** Number of stop times in cache */
+  stopTimeCount: number;
 }
 
 /**
@@ -43,6 +64,12 @@ export interface GtfsCache {
   readonly meta: CacheMeta;
   readonly routes: Map<string, Route>;
   readonly stops: Stop[];
+  readonly trips: Map<string, Trip>;
+  readonly shapes: Map<string, ShapePoint[]>;
+  readonly calendar: Map<string, Calendar>;
+  readonly calendarDates: CalendarDate[];
+  readonly agencies: Agency[];
+  readonly stopTimes: Map<string, StopTime[]>;
 }
 
 // =============================================================================
@@ -188,6 +215,164 @@ async function saveStops(cacheDir: string, city: CityId, stops: Stop[]): Promise
 }
 
 // =============================================================================
+// Trips Cache Functions
+// =============================================================================
+
+export async function loadCachedTrips(cacheDir: string, city: CityId): Promise<Map<string, Trip> | null> {
+  const tripsPath = join(cacheDir, city, 'trips.json');
+  
+  if (!existsSync(tripsPath)) {
+    return null;
+  }
+  
+  try {
+    const content = await readFile(tripsPath, 'utf-8');
+    const entries = JSON.parse(content) as [string, Trip][];
+    return new Map(entries);
+  } catch {
+    return null;
+  }
+}
+
+async function saveTrips(cacheDir: string, city: CityId, trips: Map<string, Trip>): Promise<void> {
+  const cityDir = join(cacheDir, city);
+  await ensureDir(cityDir);
+  const entries = Array.from(trips.entries());
+  await writeFile(join(cityDir, 'trips.json'), JSON.stringify(entries));
+}
+
+// =============================================================================
+// Shapes Cache Functions
+// =============================================================================
+
+export async function loadCachedShapes(cacheDir: string, city: CityId): Promise<Map<string, ShapePoint[]> | null> {
+  const shapesPath = join(cacheDir, city, 'shapes.json');
+  
+  if (!existsSync(shapesPath)) {
+    return null;
+  }
+  
+  try {
+    const content = await readFile(shapesPath, 'utf-8');
+    const entries = JSON.parse(content) as [string, ShapePoint[]][];
+    return new Map(entries);
+  } catch {
+    return null;
+  }
+}
+
+async function saveShapes(cacheDir: string, city: CityId, shapes: Map<string, ShapePoint[]>): Promise<void> {
+  const cityDir = join(cacheDir, city);
+  await ensureDir(cityDir);
+  const entries = Array.from(shapes.entries());
+  await writeFile(join(cityDir, 'shapes.json'), JSON.stringify(entries));
+}
+
+// =============================================================================
+// Calendar Cache Functions
+// =============================================================================
+
+export async function loadCachedCalendar(cacheDir: string, city: CityId): Promise<Map<string, Calendar> | null> {
+  const calendarPath = join(cacheDir, city, 'calendar.json');
+  
+  if (!existsSync(calendarPath)) {
+    return null;
+  }
+  
+  try {
+    const content = await readFile(calendarPath, 'utf-8');
+    const entries = JSON.parse(content) as [string, Calendar][];
+    return new Map(entries);
+  } catch {
+    return null;
+  }
+}
+
+async function saveCalendar(cacheDir: string, city: CityId, calendar: Map<string, Calendar>): Promise<void> {
+  const cityDir = join(cacheDir, city);
+  await ensureDir(cityDir);
+  const entries = Array.from(calendar.entries());
+  await writeFile(join(cityDir, 'calendar.json'), JSON.stringify(entries));
+}
+
+// =============================================================================
+// Calendar Dates Cache Functions
+// =============================================================================
+
+export async function loadCachedCalendarDates(cacheDir: string, city: CityId): Promise<CalendarDate[] | null> {
+  const calendarDatesPath = join(cacheDir, city, 'calendar_dates.json');
+  
+  if (!existsSync(calendarDatesPath)) {
+    return null;
+  }
+  
+  try {
+    const content = await readFile(calendarDatesPath, 'utf-8');
+    return JSON.parse(content) as CalendarDate[];
+  } catch {
+    return null;
+  }
+}
+
+async function saveCalendarDates(cacheDir: string, city: CityId, calendarDates: CalendarDate[]): Promise<void> {
+  const cityDir = join(cacheDir, city);
+  await ensureDir(cityDir);
+  await writeFile(join(cityDir, 'calendar_dates.json'), JSON.stringify(calendarDates));
+}
+
+// =============================================================================
+// Agencies Cache Functions
+// =============================================================================
+
+export async function loadCachedAgencies(cacheDir: string, city: CityId): Promise<Agency[] | null> {
+  const agenciesPath = join(cacheDir, city, 'agencies.json');
+  
+  if (!existsSync(agenciesPath)) {
+    return null;
+  }
+  
+  try {
+    const content = await readFile(agenciesPath, 'utf-8');
+    return JSON.parse(content) as Agency[];
+  } catch {
+    return null;
+  }
+}
+
+async function saveAgencies(cacheDir: string, city: CityId, agencies: Agency[]): Promise<void> {
+  const cityDir = join(cacheDir, city);
+  await ensureDir(cityDir);
+  await writeFile(join(cityDir, 'agencies.json'), JSON.stringify(agencies));
+}
+
+// =============================================================================
+// Stop Times Cache Functions
+// =============================================================================
+
+export async function loadCachedStopTimes(cacheDir: string, city: CityId): Promise<Map<string, StopTime[]> | null> {
+  const stopTimesPath = join(cacheDir, city, 'stop_times.json');
+  
+  if (!existsSync(stopTimesPath)) {
+    return null;
+  }
+  
+  try {
+    const content = await readFile(stopTimesPath, 'utf-8');
+    const entries = JSON.parse(content) as [string, StopTime[]][];
+    return new Map(entries);
+  } catch {
+    return null;
+  }
+}
+
+async function saveStopTimes(cacheDir: string, city: CityId, stopTimes: Map<string, StopTime[]>): Promise<void> {
+  const cityDir = join(cacheDir, city);
+  await ensureDir(cityDir);
+  const entries = Array.from(stopTimes.entries());
+  await writeFile(join(cityDir, 'stop_times.json'), JSON.stringify(entries));
+}
+
+// =============================================================================
 // Main Sync Function
 // =============================================================================
 
@@ -277,6 +462,12 @@ export async function syncGtfs(city: CityId, options: SyncOptions = {}): Promise
 
     let routes = new Map<string, Route>();
     let stops: Stop[] = [];
+    let trips = new Map<string, Trip>();
+    let shapes = new Map<string, ShapePoint[]>();
+    let calendar = new Map<string, Calendar>();
+    let calendarDates: CalendarDate[] = [];
+    let agencies: Agency[] = [];
+    let stopTimes = new Map<string, StopTime[]>();
 
     try {
       // Extract with yauzl
@@ -284,14 +475,34 @@ export async function syncGtfs(city: CityId, options: SyncOptions = {}): Promise
       
       try {
         for await (const entry of zip) {
-          if (entry.filename === 'routes.txt') {
-            const stream = await entry.openReadStream();
-            const content = await streamToString(stream);
-            routes = parseRoutesContent(content);
-          } else if (entry.filename === 'stops.txt') {
-            const stream = await entry.openReadStream();
-            const content = await streamToString(stream);
-            stops = parseStopsContent(content);
+          const stream = await entry.openReadStream();
+          const content = await streamToString(stream);
+          
+          switch (entry.filename) {
+            case 'routes.txt':
+              routes = parseRoutesContent(content);
+              break;
+            case 'stops.txt':
+              stops = parseStopsContent(content);
+              break;
+            case 'trips.txt':
+              trips = parseTripsContent(content);
+              break;
+            case 'shapes.txt':
+              shapes = parseShapesContent(content);
+              break;
+            case 'calendar.txt':
+              calendar = parseCalendarContent(content);
+              break;
+            case 'calendar_dates.txt':
+              calendarDates = parseCalendarDatesContent(content);
+              break;
+            case 'agency.txt':
+              agencies = parseAgencyContent(content);
+              break;
+            case 'stop_times.txt':
+              stopTimes = parseStopTimesContent(content);
+              break;
           }
         }
       } finally {
@@ -306,6 +517,12 @@ export async function syncGtfs(city: CityId, options: SyncOptions = {}): Promise
       }
     }
 
+    // Count stop times (sum of all arrays)
+    let stopTimeCount = 0;
+    for (const times of stopTimes.values()) {
+      stopTimeCount += times.length;
+    }
+
     // Save to cache
     const syncedAt = new Date();
     const meta: CacheMeta = {
@@ -313,11 +530,23 @@ export async function syncGtfs(city: CityId, options: SyncOptions = {}): Promise
       syncedAt: syncedAt.toISOString(),
       routeCount: routes.size,
       stopCount: stops.length,
+      tripCount: trips.size,
+      shapeCount: shapes.size,
+      calendarCount: calendar.size,
+      calendarDateCount: calendarDates.length,
+      agencyCount: agencies.length,
+      stopTimeCount,
     };
 
     await saveCacheMeta(cacheDir, city, meta);
     await saveRoutes(cacheDir, city, routes);
     await saveStops(cacheDir, city, stops);
+    await saveTrips(cacheDir, city, trips);
+    await saveShapes(cacheDir, city, shapes);
+    await saveCalendar(cacheDir, city, calendar);
+    await saveCalendarDates(cacheDir, city, calendarDates);
+    await saveAgencies(cacheDir, city, agencies);
+    await saveStopTimes(cacheDir, city, stopTimes);
 
     return {
       city,
@@ -341,7 +570,7 @@ export async function syncGtfs(city: CityId, options: SyncOptions = {}): Promise
 
 /**
  * Load GTFS cache for a city.
- * Returns null if not cached.
+ * Returns null if cache is not available.
  * 
  * @param city - City to load
  * @param cacheDir - Cache directory
@@ -355,6 +584,7 @@ export async function loadGtfsCache(city: CityId, cacheDir?: string): Promise<Gt
     return null;
   }
   
+  // Load core data (required)
   const routes = await loadCachedRoutes(dir, city);
   const stops = await loadCachedStops(dir, city);
   
@@ -362,5 +592,23 @@ export async function loadGtfsCache(city: CityId, cacheDir?: string): Promise<Gt
     return null;
   }
   
-  return { meta, routes, stops };
+  // Load extended data (optional, default to empty if not present)
+  const trips = await loadCachedTrips(dir, city) ?? new Map<string, Trip>();
+  const shapes = await loadCachedShapes(dir, city) ?? new Map<string, ShapePoint[]>();
+  const calendar = await loadCachedCalendar(dir, city) ?? new Map<string, Calendar>();
+  const calendarDates = await loadCachedCalendarDates(dir, city) ?? [];
+  const agencies = await loadCachedAgencies(dir, city) ?? [];
+  const stopTimes = await loadCachedStopTimes(dir, city) ?? new Map<string, StopTime[]>();
+  
+  return { 
+    meta, 
+    routes, 
+    stops,
+    trips,
+    shapes,
+    calendar,
+    calendarDates,
+    agencies,
+    stopTimes,
+  };
 }

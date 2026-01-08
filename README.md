@@ -4,10 +4,6 @@ A robust, type-safe TypeScript SDK for accessing **real-time public transport da
 
 It handles the complexity of parsing raw GPS streams (HTML/CSV), normalizing coordinate formats, handling text encodings (Windows-1257), and merging live data with static GTFS schedules (routes, stops).
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue.svg)
-![Tests](https://img.shields.io/badge/Coverage-100%25-brightgreen.svg)
-
 ## 🚀 Why use this SDK?
 
 Raw public transport data in Lithuania (from stops.lt) is fragmented and messy:
@@ -170,14 +166,20 @@ const cities = client.getCities(); // includes 'marijampole'
 
 #### Methods
 
-| Method                    | Returns               | Description                                                                                              |
-| ------------------------- | --------------------- | -------------------------------------------------------------------------------------------------------- |
-| **`getVehicles(city)`**   | `Promise<Vehicle[]>`  | Fetches real-time vehicle positions. If `autoEnrich` is true, ensures GTFS data is synced and merges it. |
-| **`sync(city, force?)`**  | `Promise<SyncResult>` | Manually downloads/updates GTFS static data (routes/stops). Throttled to 60s unless `force=true`.        |
-| **`getRoutes(city)`**     | `Promise<Route[]>`    | Returns the list of static routes from GTFS. Requires prior `sync()`.                                    |
-| **`getStops(city)`**      | `Promise<Stop[]>`     | Returns the list of static stops from GTFS. Requires prior `sync()`.                                     |
-| **`getCities()`**         | `CityId[]`            | Returns a list of all supported city identifiers.                                                        |
-| **`getCityConfig(city)`** | `CityConfig`          | Returns configuration details (tier, URLs) for a specific city.                                          |
+| Method                       | Returns                              | Description                                                                                              |
+| ---------------------------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| **`getVehicles(city)`**      | `Promise<Vehicle[]>`                 | Fetches real-time vehicle positions. If `autoEnrich` is true, ensures GTFS data is synced and merges it. |
+| **`sync(city, force?)`**     | `Promise<SyncResult>`                | Manually downloads/updates GTFS static data (routes/stops). Throttled to 60s unless `force=true`.        |
+| **`getRoutes(city)`**        | `Promise<Route[]>`                   | Returns the list of static routes from GTFS. Requires prior `sync()`.                                    |
+| **`getStops(city)`**         | `Promise<Stop[]>`                    | Returns the list of static stops from GTFS. Requires prior `sync()`.                                     |
+| **`getTrips(city)`**         | `Promise<Trip[]>`                    | Returns all trips with route/service/shape linkage. Requires prior `sync()`.                             |
+| **`getShapes(city)`**        | `Promise<Map<string, ShapePoint[]>>` | Returns route polylines grouped by shape ID. Requires prior `sync()`.                                    |
+| **`getCalendar(city)`**      | `Promise<Calendar[]>`                | Returns service calendars (which days services operate). Requires prior `sync()`.                        |
+| **`getCalendarDates(city)`** | `Promise<CalendarDate[]>`            | Returns calendar exceptions (holidays, special dates). Requires prior `sync()`.                          |
+| **`getAgencies(city)`**      | `Promise<Agency[]>`                  | Returns transit agency information. Requires prior `sync()`.                                             |
+| **`getSchedule(city)`**      | `Promise<Map<string, StopTime[]>>`   | Returns stop times grouped by trip ID (⚠️ large dataset). Requires prior `sync()`.                       |
+| **`getCities()`**            | `CityId[]`                           | Returns a list of all supported city identifiers.                                                        |
+| **`getCityConfig(city)`**    | `CityConfig`                         | Returns configuration details (tier, URLs) for a specific city.                                          |
 
 ### Key Types
 
@@ -274,6 +276,159 @@ interface Stop {
 
   /** Longitude */
   readonly longitude: number;
+}
+```
+
+#### `Trip` (GTFS)
+
+```typescript
+interface Trip {
+  /** Unique trip ID */
+  readonly id: string;
+
+  /** Route ID reference */
+  readonly routeId: string;
+
+  /** Service/calendar ID */
+  readonly serviceId: string;
+
+  /** Trip destination headsign */
+  readonly headsign: string;
+
+  /** Trip short name (optional) */
+  readonly shortName: string | null;
+
+  /** Direction (0 or 1) */
+  readonly directionId: number | null;
+
+  /** Shape ID reference (for drawing route path) */
+  readonly shapeId: string | null;
+}
+```
+
+#### `ShapePoint` (GTFS)
+
+```typescript
+interface ShapePoint {
+  /** Shape ID */
+  readonly shapeId: string;
+
+  /** Latitude */
+  readonly latitude: number;
+
+  /** Longitude */
+  readonly longitude: number;
+
+  /** Point sequence in shape */
+  readonly sequence: number;
+
+  /** Distance traveled along shape (optional) */
+  readonly distanceTraveled: number | null;
+}
+```
+
+#### `Calendar` (GTFS)
+
+```typescript
+interface Calendar {
+  /** Service ID */
+  readonly serviceId: string;
+
+  /** Operates on Mondays */
+  readonly monday: boolean;
+
+  /** Operates on Tuesdays */
+  readonly tuesday: boolean;
+
+  /** Operates on Wednesdays */
+  readonly wednesday: boolean;
+
+  /** Operates on Thursdays */
+  readonly thursday: boolean;
+
+  /** Operates on Fridays */
+  readonly friday: boolean;
+
+  /** Operates on Saturdays */
+  readonly saturday: boolean;
+
+  /** Operates on Sundays */
+  readonly sunday: boolean;
+
+  /** Service start date (ISO format YYYY-MM-DD) */
+  readonly startDate: string;
+
+  /** Service end date (ISO format YYYY-MM-DD) */
+  readonly endDate: string;
+}
+```
+
+#### `CalendarDate` (GTFS)
+
+```typescript
+interface CalendarDate {
+  /** Service ID */
+  readonly serviceId: string;
+
+  /** Exception date (ISO format YYYY-MM-DD) */
+  readonly date: string;
+
+  /** Exception type */
+  readonly exceptionType: "added" | "removed";
+}
+```
+
+#### `Agency` (GTFS)
+
+```typescript
+interface Agency {
+  /** Agency ID (optional if only one agency) */
+  readonly id: string | null;
+
+  /** Agency name */
+  readonly name: string;
+
+  /** Agency website URL */
+  readonly url: string;
+
+  /** Agency timezone */
+  readonly timezone: string;
+
+  /** Agency language code */
+  readonly language: string | null;
+
+  /** Agency phone number */
+  readonly phone: string | null;
+}
+```
+
+#### `StopTime` (GTFS)
+
+```typescript
+interface StopTime {
+  /** Trip ID */
+  readonly tripId: string;
+
+  /** Stop ID */
+  readonly stopId: string;
+
+  /** Arrival time (HH:MM:SS format, may exceed 24:00:00) */
+  readonly arrivalTime: string;
+
+  /** Departure time (HH:MM:SS format, may exceed 24:00:00) */
+  readonly departureTime: string;
+
+  /** Stop sequence (0-based) */
+  readonly sequence: number;
+
+  /** Stop headsign override */
+  readonly stopHeadsign: string | null;
+
+  /** Pickup type (0=regular, 1=none, etc.) */
+  readonly pickupType: number | null;
+
+  /** Drop-off type (0=regular, 1=none, etc.) */
+  readonly dropOffType: number | null;
 }
 ```
 

@@ -26,7 +26,7 @@
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import type { CityId, Route, Stop, SyncResult, Vehicle } from './types.js';
+import type { CityId, Route, Stop, Trip, ShapePoint, Calendar, CalendarDate, Agency, StopTime, SyncResult, Vehicle } from './types.js';
 import { CITY_CONFIGS, ALL_CITY_IDS, type CityConfig } from './config.js';
 import {
   TransportNetworkError,
@@ -36,7 +36,18 @@ import {
 } from './errors.js';
 import { parseGpsFullStream } from './parsers/gps-full.js';
 import { parseGpsLiteStream, getLiteFormatDescriptor } from './parsers/gps-lite.js';
-import { syncGtfs, loadGtfsCache, loadCachedRoutes, loadCachedStops } from './gtfs/sync.js';
+import { 
+  syncGtfs, 
+  loadGtfsCache, 
+  loadCachedRoutes, 
+  loadCachedStops,
+  loadCachedTrips,
+  loadCachedShapes,
+  loadCachedCalendar,
+  loadCachedCalendarDates,
+  loadCachedAgencies,
+  loadCachedStopTimes,
+} from './gtfs/sync.js';
 import { enrichVehicles, buildRouteCache, type RouteCache } from './enrichment/route-matcher.js';
 import { clientConfigSchema } from './schemas.js';
 
@@ -528,6 +539,167 @@ export class LtTransport {
     return config;
   }
 
+  /**
+   * Get trip data for a city.
+   * 
+   * Requires prior `sync()` call to download GTFS data.
+   * 
+   * @param city - City to get trips for
+   * @returns Array of trips
+   * @throws {SyncRequiredError} If GTFS data not synced
+   * @throws {InvalidCityError} If city is not recognized
+   */
+  async getTrips(city: string): Promise<Trip[]> {
+    const config = this.getEffectiveCityConfig(city);
+    
+    if (!config) {
+      throw new InvalidCityError(city);
+    }
+    
+    const trips = await loadCachedTrips(this.cacheDir, city as CityId);
+    
+    if (!trips) {
+      throw new SyncRequiredError(city);
+    }
+
+    return Array.from(trips.values());
+  }
+
+  /**
+   * Get shape data for a city (geographic paths for routes).
+   * 
+   * Requires prior `sync()` call to download GTFS data.
+   * Returns a Map where keys are shape IDs and values are arrays of points.
+   * 
+   * @param city - City to get shapes for
+   * @returns Map from shape ID to array of ShapePoint
+   * @throws {SyncRequiredError} If GTFS data not synced
+   * @throws {InvalidCityError} If city is not recognized
+   */
+  async getShapes(city: string): Promise<Map<string, ShapePoint[]>> {
+    const config = this.getEffectiveCityConfig(city);
+    
+    if (!config) {
+      throw new InvalidCityError(city);
+    }
+    
+    const shapes = await loadCachedShapes(this.cacheDir, city as CityId);
+    
+    if (!shapes) {
+      throw new SyncRequiredError(city);
+    }
+
+    return shapes;
+  }
+
+  /**
+   * Get service calendar data for a city.
+   * 
+   * Requires prior `sync()` call to download GTFS data.
+   * 
+   * @param city - City to get calendar for
+   * @returns Array of Calendar entries
+   * @throws {SyncRequiredError} If GTFS data not synced
+   * @throws {InvalidCityError} If city is not recognized
+   */
+  async getCalendar(city: string): Promise<Calendar[]> {
+    const config = this.getEffectiveCityConfig(city);
+    
+    if (!config) {
+      throw new InvalidCityError(city);
+    }
+    
+    const calendar = await loadCachedCalendar(this.cacheDir, city as CityId);
+    
+    if (!calendar) {
+      throw new SyncRequiredError(city);
+    }
+
+    return Array.from(calendar.values());
+  }
+
+  /**
+   * Get calendar date exceptions for a city.
+   * 
+   * Requires prior `sync()` call to download GTFS data.
+   * 
+   * @param city - City to get calendar dates for
+   * @returns Array of CalendarDate exceptions
+   * @throws {SyncRequiredError} If GTFS data not synced
+   * @throws {InvalidCityError} If city is not recognized
+   */
+  async getCalendarDates(city: string): Promise<CalendarDate[]> {
+    const config = this.getEffectiveCityConfig(city);
+    
+    if (!config) {
+      throw new InvalidCityError(city);
+    }
+    
+    const calendarDates = await loadCachedCalendarDates(this.cacheDir, city as CityId);
+    
+    if (!calendarDates) {
+      throw new SyncRequiredError(city);
+    }
+
+    return calendarDates;
+  }
+
+  /**
+   * Get agency information for a city.
+   * 
+   * Requires prior `sync()` call to download GTFS data.
+   * 
+   * @param city - City to get agencies for
+   * @returns Array of Agency objects
+   * @throws {SyncRequiredError} If GTFS data not synced
+   * @throws {InvalidCityError} If city is not recognized
+   */
+  async getAgencies(city: string): Promise<Agency[]> {
+    const config = this.getEffectiveCityConfig(city);
+    
+    if (!config) {
+      throw new InvalidCityError(city);
+    }
+    
+    const agencies = await loadCachedAgencies(this.cacheDir, city as CityId);
+    
+    if (!agencies) {
+      throw new SyncRequiredError(city);
+    }
+
+    return agencies;
+  }
+
+  /**
+   * Get stop times (schedule) data for a city.
+   * 
+   * **Warning**: This dataset is large (~25MB for Vilnius) and will consume 
+   * significant memory (~150-200MB) when loaded.
+   * 
+   * Requires prior `sync()` call to download GTFS data.
+   * Returns a Map where keys are trip IDs and values are arrays of stop times.
+   * 
+   * @param city - City to get schedule for
+   * @returns Map from trip ID to array of StopTime
+   * @throws {SyncRequiredError} If GTFS data not synced
+   * @throws {InvalidCityError} If city is not recognized
+   */
+  async getSchedule(city: string): Promise<Map<string, StopTime[]>> {
+    const config = this.getEffectiveCityConfig(city);
+    
+    if (!config) {
+      throw new InvalidCityError(city);
+    }
+    
+    const stopTimes = await loadCachedStopTimes(this.cacheDir, city as CityId);
+    
+    if (!stopTimes) {
+      throw new SyncRequiredError(city);
+    }
+
+    return stopTimes;
+  }
+
   // ===========================================================================
   // Private Helpers
   // ===========================================================================
@@ -602,6 +774,12 @@ export type {
   Vehicle,
   Stop,
   Route,
+  Trip,
+  ShapePoint,
+  Calendar,
+  CalendarDate,
+  Agency,
+  StopTime,
   SyncResult,
 } from './types.js';
 

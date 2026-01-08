@@ -7,8 +7,6 @@
 import { describe, it, expect } from 'vitest';
 import {
   gpsFullRowSchema,
-  gpsLitePanevezysSchema,
-  gpsLiteTaurageSchema,
   gtfsRouteSchema,
   gtfsStopSchema,
   clientConfigSchema,
@@ -91,40 +89,12 @@ describe('gpsFullRowSchema', () => {
 });
 
 // =============================================================================
-// GPS Lite Schema Tests (tuple format)
+// Note: GPS Lite validation is now handled by the parser using
+// LiteFormatDescriptor. Row-level schema validation is not needed
+// since the descriptor provides column indices and the parser validates
+// minColumns, coordinates, etc. This allows custom cities without schema changes.
+// See src/__tests__/gps-lite.test.ts for parser validation tests.
 // =============================================================================
-
-describe('gpsLitePanevezysSchema', () => {
-  it('should validate a Panevėžys lite row (9 columns)', () => {
-    const validRow = ['2', '12', '24358920', '55728450', '35', '180', '0', 'VEH001', '0'];
-
-    const result = gpsLitePanevezysSchema.safeParse(validRow);
-    expect(result.success).toBe(true);
-  });
-
-  it('should reject too few columns', () => {
-    const invalidRow = ['2', '12', '24358920', '55728450', '35']; // Only 5 columns
-
-    const result = gpsLitePanevezysSchema.safeParse(invalidRow);
-    expect(result.success).toBe(false);
-  });
-});
-
-describe('gpsLiteTaurageSchema', () => {
-  it('should validate a Tauragė lite row (8 columns)', () => {
-    const validRow = ['2', 'S11', '22289000', '55252000', '30', '45', 'TAU001', '0'];
-
-    const result = gpsLiteTaurageSchema.safeParse(validRow);
-    expect(result.success).toBe(true);
-  });
-
-  it('should accept alphanumeric route identifiers', () => {
-    const row = ['2', 'J25', '22289000', '55252000', '30', '45', 'TAU002', '0'];
-
-    const result = gpsLiteTaurageSchema.safeParse(row);
-    expect(result.success).toBe(true);
-  });
-});
 
 // =============================================================================
 // GTFS Schema Tests

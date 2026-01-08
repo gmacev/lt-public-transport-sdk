@@ -1,12 +1,22 @@
 /**
- * GTFS file parsers for routes.txt and stops.txt
+ * GTFS file parsers for routes.txt, stops.txt, trips.txt, shapes.txt, 
+ * calendar.txt, calendar_dates.txt, agency.txt, and stop_times.txt
  * @module gtfs/parser
  */
 
-import type { Route, Stop, VehicleType } from '../types.js';
+import type { Route, Stop, Trip, ShapePoint, Calendar, CalendarDate, Agency, StopTime, VehicleType } from '../types.js';
 import { GTFS_ROUTE_TYPE_MAP } from '../types.js';
 import { cleanTextField } from '../utils/index.js';
-import { gtfsRouteSchema, gtfsStopSchema } from '../schemas.js';
+import { 
+  gtfsRouteSchema, 
+  gtfsStopSchema,
+  gtfsTripSchema,
+  gtfsShapeSchema,
+  gtfsCalendarSchema,
+  gtfsCalendarDateSchema,
+  gtfsAgencySchema,
+  gtfsStopTimeSchema,
+} from '../schemas.js';
 
 // =============================================================================
 // CSV Parsing Utilities
@@ -212,3 +222,387 @@ export function parseStopsContent(content: string): Stop[] {
 
   return stops;
 }
+
+// =============================================================================
+// Trips Parser
+// =============================================================================
+
+/**
+ * Parse trips.txt content into a Map keyed by trip_id.
+ * 
+ * @param content - Raw trips.txt content
+ * @returns Map from trip_id to Trip object
+ */
+export function parseTripsContent(content: string): Map<string, Trip> {
+  const lines = content.split('\n').filter(line => line.trim());
+  
+  if (lines.length < 2) {
+    return new Map();
+  }
+
+  const firstLine = lines[0];
+  if (firstLine === undefined || firstLine === '') {
+    return new Map();
+  }
+  const headers = parseCSVLine(firstLine);
+  const headerMap = buildHeaderMap(headers);
+
+  const trips = new Map<string, Trip>();
+
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (line === undefined || line === '') continue;
+    const row = parseCSVLine(line);
+    
+    try {
+      const rowObject = buildRowObject(row, headerMap);
+      const parseResult = gtfsTripSchema.safeParse(rowObject);
+      
+      if (!parseResult.success) {
+        continue;
+      }
+      
+      const validated = parseResult.data;
+
+      const trip: Trip = {
+        id: validated.trip_id,
+        routeId: validated.route_id,
+        serviceId: validated.service_id,
+        headsign: cleanTextField(validated.trip_headsign),
+        directionId: validated.direction_id ?? null,
+        shapeId: validated.shape_id ?? null,
+        blockId: validated.block_id ?? null,
+      };
+
+      trips.set(trip.id, trip);
+    } catch {
+      continue;
+    }
+  }
+
+  return trips;
+}
+
+// =============================================================================
+// Shapes Parser
+// =============================================================================
+
+/**
+ * Parse shapes.txt content into a Map grouped by shape_id.
+ * Points within each shape are sorted by sequence.
+ * 
+ * @param content - Raw shapes.txt content
+ * @returns Map from shape_id to array of ShapePoint objects
+ */
+export function parseShapesContent(content: string): Map<string, ShapePoint[]> {
+  const lines = content.split('\n').filter(line => line.trim());
+  
+  if (lines.length < 2) {
+    return new Map();
+  }
+
+  const firstLine = lines[0];
+  if (firstLine === undefined || firstLine === '') {
+    return new Map();
+  }
+  const headers = parseCSVLine(firstLine);
+  const headerMap = buildHeaderMap(headers);
+
+  const shapes = new Map<string, ShapePoint[]>();
+
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (line === undefined || line === '') continue;
+    const row = parseCSVLine(line);
+    
+    try {
+      const rowObject = buildRowObject(row, headerMap);
+      const parseResult = gtfsShapeSchema.safeParse(rowObject);
+      
+      if (!parseResult.success) {
+        continue;
+      }
+      
+      const validated = parseResult.data;
+
+      const point: ShapePoint = {
+        shapeId: validated.shape_id,
+        latitude: validated.shape_pt_lat,
+        longitude: validated.shape_pt_lon,
+        sequence: validated.shape_pt_sequence,
+        distanceTraveled: validated.shape_dist_traveled ?? null,
+      };
+
+      const existing = shapes.get(point.shapeId);
+      if (existing !== undefined) {
+        existing.push(point);
+      } else {
+        shapes.set(point.shapeId, [point]);
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  // Sort points within each shape by sequence
+  for (const points of shapes.values()) {
+    points.sort((a, b) => a.sequence - b.sequence);
+  }
+
+  return shapes;
+}
+
+// =============================================================================
+// Calendar Parser
+// =============================================================================
+
+/**
+ * Helper to parse GTFS date format (YYYYMMDD) to ISO format (YYYY-MM-DD).
+ */
+function parseGtfsDate(dateStr: string): string {
+  if (dateStr.length !== 8) return dateStr;
+  return `${dateStr.slice(0, 4)}-${dateStr.slice(4, 6)}-${dateStr.slice(6, 8)}`;
+}
+
+/**
+ * Parse calendar.txt content into a Map keyed by service_id.
+ * 
+ * @param content - Raw calendar.txt content
+ * @returns Map from service_id to Calendar object
+ */
+export function parseCalendarContent(content: string): Map<string, Calendar> {
+  const lines = content.split('\n').filter(line => line.trim());
+  
+  if (lines.length < 2) {
+    return new Map();
+  }
+
+  const firstLine = lines[0];
+  if (firstLine === undefined || firstLine === '') {
+    return new Map();
+  }
+  const headers = parseCSVLine(firstLine);
+  const headerMap = buildHeaderMap(headers);
+
+  const calendars = new Map<string, Calendar>();
+
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (line === undefined || line === '') continue;
+    const row = parseCSVLine(line);
+    
+    try {
+      const rowObject = buildRowObject(row, headerMap);
+      const parseResult = gtfsCalendarSchema.safeParse(rowObject);
+      
+      if (!parseResult.success) {
+        continue;
+      }
+      
+      const validated = parseResult.data;
+
+      const calendar: Calendar = {
+        serviceId: validated.service_id,
+        monday: validated.monday === 1,
+        tuesday: validated.tuesday === 1,
+        wednesday: validated.wednesday === 1,
+        thursday: validated.thursday === 1,
+        friday: validated.friday === 1,
+        saturday: validated.saturday === 1,
+        sunday: validated.sunday === 1,
+        startDate: parseGtfsDate(validated.start_date),
+        endDate: parseGtfsDate(validated.end_date),
+      };
+
+      calendars.set(calendar.serviceId, calendar);
+    } catch {
+      continue;
+    }
+  }
+
+  return calendars;
+}
+
+// =============================================================================
+// Calendar Dates Parser
+// =============================================================================
+
+/**
+ * Parse calendar_dates.txt content into an array of CalendarDate objects.
+ * 
+ * @param content - Raw calendar_dates.txt content
+ * @returns Array of CalendarDate objects
+ */
+export function parseCalendarDatesContent(content: string): CalendarDate[] {
+  const lines = content.split('\n').filter(line => line.trim());
+  
+  if (lines.length < 2) {
+    return [];
+  }
+
+  const firstLine = lines[0];
+  if (firstLine === undefined || firstLine === '') {
+    return [];
+  }
+  const headers = parseCSVLine(firstLine);
+  const headerMap = buildHeaderMap(headers);
+
+  const calendarDates: CalendarDate[] = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (line === undefined || line === '') continue;
+    const row = parseCSVLine(line);
+    
+    try {
+      const rowObject = buildRowObject(row, headerMap);
+      const parseResult = gtfsCalendarDateSchema.safeParse(rowObject);
+      
+      if (!parseResult.success) {
+        continue;
+      }
+      
+      const validated = parseResult.data;
+
+      calendarDates.push({
+        serviceId: validated.service_id,
+        date: parseGtfsDate(validated.date),
+        exceptionType: validated.exception_type === 1 ? 'added' : 'removed',
+      });
+    } catch {
+      continue;
+    }
+  }
+
+  return calendarDates;
+}
+
+// =============================================================================
+// Agency Parser
+// =============================================================================
+
+/**
+ * Parse agency.txt content into an array of Agency objects.
+ * 
+ * @param content - Raw agency.txt content
+ * @returns Array of Agency objects
+ */
+export function parseAgencyContent(content: string): Agency[] {
+  const lines = content.split('\n').filter(line => line.trim());
+  
+  if (lines.length < 2) {
+    return [];
+  }
+
+  const firstLine = lines[0];
+  if (firstLine === undefined || firstLine === '') {
+    return [];
+  }
+  const headers = parseCSVLine(firstLine);
+  const headerMap = buildHeaderMap(headers);
+
+  const agencies: Agency[] = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (line === undefined || line === '') continue;
+    const row = parseCSVLine(line);
+    
+    try {
+      const rowObject = buildRowObject(row, headerMap);
+      const parseResult = gtfsAgencySchema.safeParse(rowObject);
+      
+      if (!parseResult.success) {
+        continue;
+      }
+      
+      const validated = parseResult.data;
+
+      agencies.push({
+        id: validated.agency_id ?? '',
+        name: cleanTextField(validated.agency_name),
+        url: validated.agency_url,
+        timezone: validated.agency_timezone,
+        language: validated.agency_lang ?? null,
+        phone: validated.agency_phone ?? null,
+      });
+    } catch {
+      continue;
+    }
+  }
+
+  return agencies;
+}
+
+// =============================================================================
+// Stop Times Parser
+// =============================================================================
+
+/**
+ * Parse stop_times.txt content into a Map grouped by trip_id.
+ * Stop times within each trip are sorted by sequence.
+ * 
+ * Note: This file can be large (~25MB for Vilnius). Use appropriate memory management.
+ * 
+ * @param content - Raw stop_times.txt content
+ * @returns Map from trip_id to array of StopTime objects
+ */
+export function parseStopTimesContent(content: string): Map<string, StopTime[]> {
+  const lines = content.split('\n').filter(line => line.trim());
+  
+  if (lines.length < 2) {
+    return new Map();
+  }
+
+  const firstLine = lines[0];
+  if (firstLine === undefined || firstLine === '') {
+    return new Map();
+  }
+  const headers = parseCSVLine(firstLine);
+  const headerMap = buildHeaderMap(headers);
+
+  const stopTimes = new Map<string, StopTime[]>();
+
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (line === undefined || line === '') continue;
+    const row = parseCSVLine(line);
+    
+    try {
+      const rowObject = buildRowObject(row, headerMap);
+      const parseResult = gtfsStopTimeSchema.safeParse(rowObject);
+      
+      if (!parseResult.success) {
+        continue;
+      }
+      
+      const validated = parseResult.data;
+
+      const stopTime: StopTime = {
+        tripId: validated.trip_id,
+        stopId: validated.stop_id,
+        arrivalTime: validated.arrival_time,
+        departureTime: validated.departure_time,
+        sequence: validated.stop_sequence,
+        headsign: validated.stop_headsign ?? null,
+      };
+
+      const existing = stopTimes.get(stopTime.tripId);
+      if (existing !== undefined) {
+        existing.push(stopTime);
+      } else {
+        stopTimes.set(stopTime.tripId, [stopTime]);
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  // Sort stop times within each trip by sequence
+  for (const times of stopTimes.values()) {
+    times.sort((a, b) => a.sequence - b.sequence);
+  }
+
+  return stopTimes;
+}
+

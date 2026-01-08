@@ -81,44 +81,6 @@ export const gpsFullRowSchema = z.object({
 export type GpsFullRow = z.infer<typeof gpsFullRowSchema>;
 
 // =============================================================================
-// GPS Lite Format Schemas
-// =============================================================================
-
-/**
- * Schema for Panevėžys GPS lite format (9 columns, no header).
- * Columns: type, route, lon, lat, speed, azimuth, ?, vehicleId, ?
- */
-export const gpsLitePanevezysSchema = z.tuple([
-  z.string(), // [0] type
-  z.string(), // [1] route (can be empty)
-  z.coerce.number(), // [2] longitude (raw int)
-  z.coerce.number(), // [3] latitude (raw int)
-  z.coerce.number(), // [4] speed
-  z.coerce.number(), // [5] azimuth
-  z.string(), // [6] unknown
-  z.string().min(1), // [7] vehicleId
-  z.string(), // [8] unknown
-]);
-
-/**
- * Schema for Tauragė GPS lite format (8 columns, no header).
- * Columns: type, route, lon, lat, speed, azimuth, vehicleId, ?
- */
-export const gpsLiteTaurageSchema = z.tuple([
-  z.string(), // [0] type
-  z.string(), // [1] route (can be alphanumeric like S11)
-  z.coerce.number(), // [2] longitude (raw int)
-  z.coerce.number(), // [3] latitude (raw int)
-  z.coerce.number(), // [4] speed
-  z.coerce.number(), // [5] azimuth
-  z.string().min(1), // [6] vehicleId
-  z.string(), // [7] unknown
-]);
-
-export type GpsLitePanevezysRow = z.infer<typeof gpsLitePanevezysSchema>;
-export type GpsLiteTaurageRow = z.infer<typeof gpsLiteTaurageSchema>;
-
-// =============================================================================
 // GTFS Routes Schema
 // =============================================================================
 
@@ -160,6 +122,126 @@ export const gtfsStopSchema = z.object({
 }).loose();
 
 export type GtfsStop = z.infer<typeof gtfsStopSchema>;
+
+// =============================================================================
+// GTFS Trip Schema
+// =============================================================================
+
+/**
+ * Schema for a GTFS trips.txt row.
+ */
+export const gtfsTripSchema = z.object({
+  route_id: z.string().min(1, 'Route ID required'),
+  service_id: z.string().min(1, 'Service ID required'),
+  trip_id: z.string().min(1, 'Trip ID required'),
+  trip_headsign: z.string().default(''),
+  trip_short_name: z.string().optional(),
+  direction_id: z.coerce.number().int().min(0).max(1).optional(),
+  block_id: z.string().optional(),
+  shape_id: z.string().optional(),
+  wheelchair_accessible: z.coerce.number().int().optional(),
+  bikes_allowed: z.coerce.number().int().optional(),
+}).loose();
+
+export type GtfsTrip = z.infer<typeof gtfsTripSchema>;
+
+// =============================================================================
+// GTFS Shape Schema
+// =============================================================================
+
+/**
+ * Schema for a GTFS shapes.txt row.
+ */
+export const gtfsShapeSchema = z.object({
+  shape_id: z.string().min(1, 'Shape ID required'),
+  shape_pt_lat: z.coerce.number(),
+  shape_pt_lon: z.coerce.number(),
+  shape_pt_sequence: z.coerce.number().int().nonnegative(),
+  shape_dist_traveled: z.coerce.number().optional(),
+}).loose();
+
+export type GtfsShape = z.infer<typeof gtfsShapeSchema>;
+
+// =============================================================================
+// GTFS Calendar Schema
+// =============================================================================
+
+/**
+ * Schema for a GTFS calendar.txt row.
+ */
+export const gtfsCalendarSchema = z.object({
+  service_id: z.string().min(1, 'Service ID required'),
+  monday: z.coerce.number().int().min(0).max(1),
+  tuesday: z.coerce.number().int().min(0).max(1),
+  wednesday: z.coerce.number().int().min(0).max(1),
+  thursday: z.coerce.number().int().min(0).max(1),
+  friday: z.coerce.number().int().min(0).max(1),
+  saturday: z.coerce.number().int().min(0).max(1),
+  sunday: z.coerce.number().int().min(0).max(1),
+  start_date: z.string().regex(/^\d{8}$/, 'Start date must be YYYYMMDD'),
+  end_date: z.string().regex(/^\d{8}$/, 'End date must be YYYYMMDD'),
+}).loose();
+
+export type GtfsCalendar = z.infer<typeof gtfsCalendarSchema>;
+
+// =============================================================================
+// GTFS Calendar Dates Schema
+// =============================================================================
+
+/**
+ * Schema for a GTFS calendar_dates.txt row.
+ * exception_type: 1 = service added, 2 = service removed
+ */
+export const gtfsCalendarDateSchema = z.object({
+  service_id: z.string().min(1, 'Service ID required'),
+  date: z.string().regex(/^\d{8}$/, 'Date must be YYYYMMDD'),
+  exception_type: z.coerce.number().int().min(1).max(2),
+}).loose();
+
+export type GtfsCalendarDate = z.infer<typeof gtfsCalendarDateSchema>;
+
+// =============================================================================
+// GTFS Agency Schema
+// =============================================================================
+
+/**
+ * Schema for a GTFS agency.txt row.
+ */
+export const gtfsAgencySchema = z.object({
+  agency_id: z.string().optional(), // Optional if only one agency
+  agency_name: z.string().min(1, 'Agency name required'),
+  agency_url: z.url('Agency URL must be valid'),
+  agency_timezone: z.string().min(1, 'Agency timezone required'),
+  agency_lang: z.string().optional(),
+  agency_phone: z.string().optional(),
+  agency_fare_url: z.string().optional(),
+  agency_email: z.string().optional(),
+}).loose();
+
+export type GtfsAgency = z.infer<typeof gtfsAgencySchema>;
+
+// =============================================================================
+// GTFS Stop Times Schema
+// =============================================================================
+
+/**
+ * Schema for a GTFS stop_times.txt row.
+ * Times are in HH:MM:SS format, can exceed 24:00:00 for overnight trips.
+ */
+export const gtfsStopTimeSchema = z.object({
+  trip_id: z.string().min(1, 'Trip ID required'),
+  arrival_time: z.string().regex(/^\d{1,2}:\d{2}:\d{2}$/, 'Arrival time must be H:MM:SS or HH:MM:SS'),
+  departure_time: z.string().regex(/^\d{1,2}:\d{2}:\d{2}$/, 'Departure time must be H:MM:SS or HH:MM:SS'),
+  stop_id: z.string().min(1, 'Stop ID required'),
+  stop_sequence: z.coerce.number().int().nonnegative(),
+  stop_headsign: z.string().optional(),
+  pickup_type: z.coerce.number().int().min(0).max(3).optional(),
+  drop_off_type: z.coerce.number().int().min(0).max(3).optional(),
+  shape_dist_traveled: z.coerce.number().optional(),
+  timepoint: z.coerce.number().int().min(0).max(1).optional(),
+}).loose();
+
+export type GtfsStopTime = z.infer<typeof gtfsStopTimeSchema>;
 
 // =============================================================================
 // Client Config Schema

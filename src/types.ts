@@ -156,6 +156,149 @@ export interface Route {
   readonly textColor: string;
 }
 
+/**
+ * Trip information from GTFS.
+ * A trip is a specific journey along a route at a specific time.
+ */
+export interface Trip {
+  /** Unique trip identifier */
+  readonly id: string;
+
+  /** Route this trip belongs to */
+  readonly routeId: string;
+
+  /** Service ID (links to Calendar for operating days) */
+  readonly serviceId: string;
+
+  /** Text displayed to passengers identifying the trip's destination */
+  readonly headsign: string;
+
+  /** Direction of travel: 0 = outbound, 1 = inbound, null = unknown */
+  readonly directionId: number | null;
+
+  /** Shape ID for the geographic path (links to shapes) */
+  readonly shapeId: string | null;
+
+  /** Block ID for vehicle scheduling */
+  readonly blockId: string | null;
+}
+
+/**
+ * A single point in a shape's geographic path.
+ * Shapes define the path a vehicle takes between stops.
+ */
+export interface ShapePoint {
+  /** Shape ID this point belongs to */
+  readonly shapeId: string;
+
+  /** Latitude in WGS84 decimal degrees */
+  readonly latitude: number;
+
+  /** Longitude in WGS84 decimal degrees */
+  readonly longitude: number;
+
+  /** Order of this point in the shape */
+  readonly sequence: number;
+
+  /** Distance traveled along the shape to this point (optional) */
+  readonly distanceTraveled: number | null;
+}
+
+/**
+ * Service calendar defining which days a service operates.
+ */
+export interface Calendar {
+  /** Service ID that can be referenced by trips */
+  readonly serviceId: string;
+
+  /** Service operates on Mondays */
+  readonly monday: boolean;
+
+  /** Service operates on Tuesdays */
+  readonly tuesday: boolean;
+
+  /** Service operates on Wednesdays */
+  readonly wednesday: boolean;
+
+  /** Service operates on Thursdays */
+  readonly thursday: boolean;
+
+  /** Service operates on Fridays */
+  readonly friday: boolean;
+
+  /** Service operates on Saturdays */
+  readonly saturday: boolean;
+
+  /** Service operates on Sundays */
+  readonly sunday: boolean;
+
+  /** Start date of service (YYYY-MM-DD) */
+  readonly startDate: string;
+
+  /** End date of service (YYYY-MM-DD) */
+  readonly endDate: string;
+}
+
+/**
+ * Exception to the regular service calendar.
+ */
+export interface CalendarDate {
+  /** Service ID this exception applies to */
+  readonly serviceId: string;
+
+  /** Date of the exception (YYYY-MM-DD) */
+  readonly date: string;
+
+  /** Type of exception: 'added' = service runs, 'removed' = service does not run */
+  readonly exceptionType: 'added' | 'removed';
+}
+
+/**
+ * Transit agency information.
+ */
+export interface Agency {
+  /** Agency identifier (may be empty if only one agency) */
+  readonly id: string;
+
+  /** Full name of the transit agency */
+  readonly name: string;
+
+  /** URL of the transit agency */
+  readonly url: string;
+
+  /** Timezone where the agency is located */
+  readonly timezone: string;
+
+  /** Primary language used by the agency (optional) */
+  readonly language: string | null;
+
+  /** Voice telephone number for the agency (optional) */
+  readonly phone: string | null;
+}
+
+/**
+ * Arrival and departure times for a stop on a trip.
+ */
+export interface StopTime {
+  /** Trip this stop time belongs to */
+  readonly tripId: string;
+
+  /** Stop where this arrival/departure occurs */
+  readonly stopId: string;
+
+  /** Arrival time (HH:MM:SS, can exceed 24:00:00 for overnight) */
+  readonly arrivalTime: string;
+
+  /** Departure time (HH:MM:SS, can exceed 24:00:00 for overnight) */
+  readonly departureTime: string;
+
+  /** Order of this stop in the trip */
+  readonly sequence: number;
+
+  /** Headsign to display at this stop (overrides trip headsign) */
+  readonly headsign: string | null;
+}
+
 // =============================================================================
 // Sync Result Types
 // =============================================================================
