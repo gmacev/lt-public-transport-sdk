@@ -3,14 +3,12 @@
  * @module errors
  */
 
-import type { CityId } from './types.js';
-
 /**
  * Base error class for transport SDK errors.
  */
 export abstract class TransportError extends Error {
   /** City associated with this error, if applicable */
-  abstract readonly city: CityId | null;
+  abstract readonly city: string | null;
 
   constructor(message: string) {
     super(message);
@@ -26,11 +24,11 @@ export abstract class TransportError extends Error {
  * Error thrown when a network request fails.
  */
 export class TransportNetworkError extends TransportError {
-  readonly city: CityId;
+  readonly city: string;
 
   constructor(
     message: string,
-    public readonly cityId: CityId,
+    public readonly cityId: string,
     public readonly statusCode?: number,
     public readonly cause?: Error
   ) {
@@ -43,9 +41,9 @@ export class TransportNetworkError extends TransportError {
  * Error thrown when GPS data is requested for a bronze-tier city.
  */
 export class GpsNotAvailableError extends TransportError {
-  readonly city: CityId;
+  readonly city: string;
 
-  constructor(cityId: CityId) {
+  constructor(cityId: string) {
     super(`GPS data is not available for ${cityId} (bronze tier city). Use GTFS static data instead.`);
     this.city = cityId;
   }
@@ -55,9 +53,9 @@ export class GpsNotAvailableError extends TransportError {
  * Error thrown when GTFS data is required but not yet synced.
  */
 export class SyncRequiredError extends TransportError {
-  readonly city: CityId;
+  readonly city: string;
 
-  constructor(cityId: CityId) {
+  constructor(cityId: string) {
     super(`GTFS data for ${cityId} is not synced. Call sync('${cityId}') first.`);
     this.city = cityId;
   }
@@ -67,10 +65,10 @@ export class SyncRequiredError extends TransportError {
  * Error thrown when GTFS sync fails.
  */
 export class GtfsSyncError extends TransportError {
-  readonly city: CityId;
+  readonly city: string;
 
   constructor(
-    cityId: CityId,
+    cityId: string,
     message: string,
     public readonly cause?: Error
   ) {
@@ -83,11 +81,11 @@ export class GtfsSyncError extends TransportError {
  * Error thrown when parsing GPS or GTFS data fails.
  */
 export class ParseError extends TransportError {
-  readonly city: CityId | null;
+  readonly city: string | null;
 
   constructor(
     message: string,
-    cityId?: CityId,
+    cityId?: string,
     public readonly line?: number,
     public readonly rawData?: string
   ) {
@@ -106,7 +104,7 @@ export class InvalidCityError extends TransportError {
   readonly city = null;
 
   constructor(providedCity: string) {
-    super(`Invalid city ID: '${providedCity}'. See ALL_CITY_IDS for valid options.`);
+    super(`Invalid city ID: '${providedCity}'. Use getCities() to see available options.`);
   }
 }
 

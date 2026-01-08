@@ -16,6 +16,80 @@
 export type CityTier = 'gold' | 'silver' | 'bronze';
 
 // =============================================================================
+// Lite Format Descriptor
+// =============================================================================
+
+/**
+ * Describes how to parse a lite GPS format.
+ * Used by silver-tier cities with headerless CSV data.
+ * 
+ * This enables data-driven parsing instead of hardcoded city-specific logic,
+ * allowing users to add new cities or adapt to format changes.
+ */
+export interface LiteFormatDescriptor {
+  /** Minimum number of columns expected in each row */
+  readonly minColumns: number;
+  
+  /** Column index (0-based) for vehicle ID */
+  readonly vehicleIdIndex: number;
+  
+  /** Column index (0-based) for route name */
+  readonly routeIndex: number;
+  
+  /** 
+   * Column indices for coordinates [latitude, longitude].
+   * Coordinates are expected in integer format (divide by 1,000,000 for decimal).
+   */
+  readonly coordIndices: readonly [latIdx: number, lonIdx: number];
+  
+  /** Column index (0-based) for speed */
+  readonly speedIndex: number;
+  
+  /** Column index (0-based) for bearing/azimuth */
+  readonly bearingIndex: number;
+  
+  /** Optional: Column index for vehicle type */
+  readonly typeIndex?: number;
+  
+  /** Optional: Column index for timestamp */
+  readonly timestampIndex?: number;
+}
+
+/**
+ * Built-in lite format descriptors for known cities.
+ * Users can override these or define new ones via config.
+ */
+export const LITE_FORMAT_DESCRIPTORS: Readonly<Record<string, LiteFormatDescriptor>> = {
+  /**
+   * Panevėžys format (9 columns, no header):
+   * [0] type, [1] route, [2] lon, [3] lat, [4] speed, [5] azimuth, [6] ?, [7] vehicleId, [8] ?
+   */
+  panevezys: {
+    minColumns: 9,
+    vehicleIdIndex: 7,
+    routeIndex: 1,
+    coordIndices: [3, 2] as const, // lat at 3, lon at 2
+    speedIndex: 4,
+    bearingIndex: 5,
+    typeIndex: 0,
+  },
+  
+  /**
+   * Tauragė format (8 columns, no header):
+   * [0] type, [1] route, [2] lon, [3] lat, [4] speed, [5] azimuth, [6] vehicleId, [7] ?
+   */
+  taurage: {
+    minColumns: 8,
+    vehicleIdIndex: 6,
+    routeIndex: 1,
+    coordIndices: [3, 2] as const, // lat at 3, lon at 2
+    speedIndex: 4,
+    bearingIndex: 5,
+    typeIndex: 0,
+  },
+} as const;
+
+// =============================================================================
 // Configuration Interfaces
 // =============================================================================
 
@@ -68,6 +142,13 @@ export interface CityConfig {
 
   /** GTFS static data configuration */
   readonly gtfs: GtfsConfig;
+  
+  /** 
+   * Lite format descriptor for silver-tier cities.
+   * Required when gps.format is 'lite'.
+   * If not provided, falls back to LITE_FORMAT_DESCRIPTORS lookup.
+   */
+  readonly liteFormat?: LiteFormatDescriptor;
 }
 
 // =============================================================================
@@ -201,6 +282,7 @@ const CITY_CONFIGS_INTERNAL = {
       enabled: true,
       url: gtfsUrl('panevezys'),
     },
+    liteFormat: LITE_FORMAT_DESCRIPTORS.panevezys,
   },
 
   taurage: {
@@ -215,6 +297,7 @@ const CITY_CONFIGS_INTERNAL = {
       enabled: true,
       url: gtfsUrl('taurage'),
     },
+    liteFormat: LITE_FORMAT_DESCRIPTORS.taurage,
   },
 
   siauliai: {

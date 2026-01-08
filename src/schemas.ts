@@ -166,6 +166,107 @@ export type GtfsStop = z.infer<typeof gtfsStopSchema>;
 // =============================================================================
 
 /**
+ * Schema for LiteFormatDescriptor - describes how to parse a lite GPS format.
+ */
+export const liteFormatDescriptorSchema = z.object({
+  /** Minimum number of columns expected in each row */
+  minColumns: z.number().int().positive({
+    message: 'minColumns must be a positive integer',
+  }),
+  
+  /** Column index (0-based) for vehicle ID */
+  vehicleIdIndex: z.number().int().nonnegative({
+    message: 'vehicleIdIndex must be a non-negative integer',
+  }),
+  
+  /** Column index (0-based) for route name */
+  routeIndex: z.number().int().nonnegative({
+    message: 'routeIndex must be a non-negative integer',
+  }),
+  
+  /** Column indices for coordinates [latitude, longitude] */
+  coordIndices: z.tuple([
+    z.number().int().nonnegative({ message: 'latitude index must be a non-negative integer' }),
+    z.number().int().nonnegative({ message: 'longitude index must be a non-negative integer' }),
+  ]),
+  
+  /** Column index (0-based) for speed */
+  speedIndex: z.number().int().nonnegative({
+    message: 'speedIndex must be a non-negative integer',
+  }),
+  
+  /** Column index (0-based) for bearing/azimuth */
+  bearingIndex: z.number().int().nonnegative({
+    message: 'bearingIndex must be a non-negative integer',
+  }),
+  
+  /** Optional: Column index for vehicle type */
+  typeIndex: z.number().int().nonnegative().optional(),
+  
+  /** Optional: Column index for timestamp */
+  timestampIndex: z.number().int().nonnegative().optional(),
+}).strict();
+
+/**
+ * Schema for GPS configuration.
+ */
+export const gpsConfigSchema = z.object({
+  enabled: z.boolean(),
+  format: z.enum(['full', 'lite']).nullable(),
+  url: z.string().regex(/^https?:\/\/.+/, { message: 'GPS URL must be a valid URL' }).nullable(),
+}).strict();
+
+/**
+ * Schema for GTFS configuration.
+ */
+export const gtfsConfigSchema = z.object({
+  enabled: z.boolean(),
+  url: z.string().regex(/^https?:\/\/.+/, { message: 'GTFS URL must be a valid URL' }),
+}).strict();
+
+/**
+ * Schema for a custom city configuration.
+ */
+export const cityConfigSchema = z.object({
+  /** City identifier */
+  id: z.string().min(1, 'City id is required'),
+  
+  /** Data quality tier */
+  tier: z.enum(['gold', 'silver', 'bronze']),
+  
+  /** GPS stream configuration */
+  gps: gpsConfigSchema,
+  
+  /** GTFS static data configuration */
+  gtfs: gtfsConfigSchema,
+  
+  /** Lite format descriptor (required for silver tier with format: 'lite') */
+  liteFormat: liteFormatDescriptorSchema.optional(),
+}).strict().refine(
+  (config) => {
+    // If format is 'lite', liteFormat should be provided
+    if (config.gps.format === 'lite' && config.liteFormat === undefined) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: "liteFormat is required when gps.format is 'lite'. Provide column indices for parsing.",
+  }
+);
+
+/**
+ * Schema for city override - partial update to existing city config.
+ */
+export const cityOverrideSchema = z.object({
+  id: z.string().min(1).optional(),
+  tier: z.enum(['gold', 'silver', 'bronze']).optional(),
+  gps: gpsConfigSchema.partial().optional(),
+  gtfs: gtfsConfigSchema.partial().optional(),
+  liteFormat: liteFormatDescriptorSchema.optional(),
+}).strict();
+
+/**
  * Schema for LtTransport client configuration.
  */
 export const clientConfigSchema = z.object({
@@ -189,7 +290,13 @@ export const clientConfigSchema = z.object({
 
   /** Whether to filter out stale data */
   filterStale: z.boolean().default(false),
-}).strict();
+  
+  /** Custom cities to add to the SDK */
+  customCities: z.record(z.string(), cityConfigSchema).optional(),
+  
+  /** Overrides for existing built-in cities */
+  cityOverrides: z.record(z.string(), cityOverrideSchema).optional(),
+});
 
 export type ValidatedClientConfig = z.infer<typeof clientConfigSchema>;
 

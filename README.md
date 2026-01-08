@@ -23,6 +23,7 @@ Raw public transport data in Lithuania (from stops.lt) is fragmented and messy:
 
 - **Unified API**: One method (`getVehicles`) validates and normalizes data for all supported cities.
 - **Auto-Enrichment**: optional automatic merging of live GPS data with GTFS routes (adds `destination`, `tripId`).
+- **Extensible**: Add custom cities or override existing configurations without waiting for SDK updates.
 - **Resilience**: Robust error handling for network timeouts, stale data, and malformed responses.
 - **Type-Safe**: Built with TypeScript and Zod for runtime validation.
 
@@ -108,6 +109,62 @@ const client = new LtTransport({
   requestTimeout: 10000,
 });
 ```
+
+#### Extensibility: Custom Cities & Overrides
+
+The SDK supports adding new cities or overriding existing configurations **without waiting for SDK updates**:
+
+```typescript
+import { LtTransport, type CityConfig } from "lt-public-transport-sdk";
+
+const client = new LtTransport({
+  // Add a completely new city
+  customCities: {
+    marijampole: {
+      id: "marijampole",
+      tier: "silver",
+      gps: {
+        enabled: true,
+        format: "lite",
+        url: "https://www.stops.lt/marijampole/gps.txt",
+      },
+      gtfs: {
+        enabled: true,
+        url: "https://www.stops.lt/marijampole/marijampole/gtfs.zip",
+      },
+      // Required for 'lite' format: define column indices
+      liteFormat: {
+        minColumns: 9,
+        vehicleIdIndex: 7,
+        routeIndex: 1,
+        coordIndices: [3, 2], // [latIndex, lonIndex]
+        speedIndex: 4,
+        bearingIndex: 5,
+      },
+    },
+  },
+
+  // Override existing city config (e.g., if format changed)
+  cityOverrides: {
+    panevezys: {
+      liteFormat: {
+        minColumns: 10, // They added a column
+        vehicleIdIndex: 8,
+        routeIndex: 1,
+        coordIndices: [3, 2],
+        speedIndex: 4,
+        bearingIndex: 5,
+      },
+    },
+  },
+});
+
+// Custom cities work with all methods
+const vehicles = await client.getVehicles("marijampole");
+const cities = client.getCities(); // includes 'marijampole'
+```
+
+> **Note**: Invalid configurations throw helpful `ZodError` messages explaining what's wrong.
 
 #### Methods
 

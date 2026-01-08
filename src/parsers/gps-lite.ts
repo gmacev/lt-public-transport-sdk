@@ -2,51 +2,24 @@
  * GPS Lite Format Parser for silver-tier cities
  * @module parsers/gps-lite
  * 
- * Handles the "lite" GPS format used by silver-tier cities (Panevėžys, Tauragė).
- * These streams have no header row and fewer columns.
+ * Handles the "lite" GPS format used by silver-tier cities.
+ * These streams have no header row and use a data-driven format descriptor
+ * to parse columns at specified indices.
  * 
- * Column counts by city (empirically verified):
- * - Panevėžys: 9 columns (no header, route often empty)
- * - Tauragė: 8 columns (no header, alphanumeric routes like S11, S19)
+ * This design allows users to:
+ * - Add new cities without SDK updates
+ * - Override formats when cities change their data structure
  */
 
-import type { CityId, Vehicle, VehicleType } from '../types.js';
+import type { Vehicle, VehicleType } from '../types.js';
+import type { LiteFormatDescriptor, CityConfig } from '../config.js';
+import { LITE_FORMAT_DESCRIPTORS } from '../config.js';
 import {
   normalizeCoordinate,
   isValidLithuaniaCoord,
   normalizeBearing,
   normalizeSpeed,
 } from '../utils/index.js';
-import { gpsLitePanevezysSchema, gpsLiteTaurageSchema } from '../schemas.js';
-
-// =============================================================================
-// Format Definitions
-// =============================================================================
-
-/**
- * Panevėžys format (9 columns, no header):
- * [0] type        - Always "2" (bus?)
- * [1] route       - Route name (often empty)
- * [2] longitude   - Integer format (÷1,000,000)
- * [3] latitude    - Integer format (÷1,000,000)
- * [4] speed       - Speed or delay?
- * [5] azimuth     - Bearing in degrees
- * [6] (empty)     - Unknown
- * [7] vehicleId   - Vehicle identifier
- * [8] (empty)     - Unknown
- */
-
-/**
- * Tauragė format (8 columns, no header):
- * [0] type        - Always "2" (bus?)
- * [1] route       - Route name (S11, S19) - ALPHANUMERIC!
- * [2] longitude   - Integer format (÷1,000,000)
- * [3] latitude    - Integer format (÷1,000,000)
- * [4] speed       - Speed in km/h
- * [5] azimuth     - Bearing in degrees
- * [6] vehicleId   - Vehicle identifier
- * [7] (empty)     - Unknown
- */
 
 // =============================================================================
 // Parser Options
@@ -61,19 +34,38 @@ export interface GpsLiteParseOptions {
 }
 
 // =============================================================================
-// City Type Guard
+// Format Detection
 // =============================================================================
 
 /**
- * Cities that use lite GPS format.
+ * Get the lite format descriptor for a city.
+ * Checks city config first, then falls back to built-in descriptors.
+ * 
+ * @param cityId - The city identifier
+ * @param cityConfig - Optional city config with custom liteFormat
+ * @returns The format descriptor, or undefined if not found
  */
-export type LiteCityId = 'panevezys' | 'taurage';
+export function getLiteFormatDescriptor(
+  cityId: string,
+  cityConfig?: CityConfig
+): LiteFormatDescriptor | undefined {
+  // Priority 1: Explicit liteFormat in city config
+  if (cityConfig?.liteFormat) {
+    return cityConfig.liteFormat;
+  }
+  
+  // Priority 2: Built-in descriptor by city ID
+  return LITE_FORMAT_DESCRIPTORS[cityId];
+}
 
 /**
- * Check if a city uses lite GPS format.
+ * Check if a city uses lite GPS format based on its config.
+ * 
+ * @param cityConfig - The city configuration
+ * @returns True if the city uses lite format
  */
-export function isLiteCity(city: CityId): city is LiteCityId {
-  return city === 'panevezys' || city === 'taurage';
+export function isLiteFormat(cityConfig: CityConfig): boolean {
+  return cityConfig.gps.format === 'lite';
 }
 
 // =============================================================================
@@ -81,16 +73,18 @@ export function isLiteCity(city: CityId): city is LiteCityId {
 // =============================================================================
 
 /**
- * Parse GPS lite format stream from a silver-tier city.
+ * Parse GPS lite format stream using a format descriptor.
  * 
  * @param text - Raw text content from gps.txt
- * @param city - City identifier (must be 'panevezys' or 'taurage')
+ * @param cityId - City identifier for vehicle ID prefixing
+ * @param format - Format descriptor defining column indices
  * @param options - Parse options
  * @returns Array of normalized Vehicle objects
  */
 export function parseGpsLiteStream(
   text: string,
-  city: LiteCityId,
+  cityId: string,
+  format: LiteFormatDescriptor,
   options: GpsLiteParseOptions = {}
 ): Vehicle[] {
   const { filterInvalidCoords = true } = options;
@@ -107,9 +101,7 @@ export function parseGpsLiteStream(
     const cols = line.split(',');
     
     try {
-      const vehicle = city === 'panevezys'
-        ? parsePanevezysLine(cols, city)
-        : parseTaurageLine(cols, city);
+      const vehicle = parseLiteLine(cols, cityId, format);
       
       if (vehicle) {
         if (filterInvalidCoords && !isValidLithuaniaCoord(vehicle.latitude, vehicle.longitude)) {
@@ -127,39 +119,66 @@ export function parseGpsLiteStream(
 }
 
 // =============================================================================
-// City-Specific Parsers
+// Generic Line Parser
 // =============================================================================
 
 /**
- * Parse a line from Panevėžys GPS lite format (9 columns).
+ * Parse a single line using the format descriptor.
+ * This is the core data-driven parser that uses column indices
+ * from the descriptor instead of hardcoded positions.
+ * 
+ * @param cols - Array of column values from the CSV line
+ * @param cityId - City identifier for vehicle ID prefixing
+ * @param format - Format descriptor with column indices
+ * @returns Parsed Vehicle or null if line is invalid
  */
-function parsePanevezysLine(cols: string[], city: CityId): Vehicle | null {
-  // Validate with Zod schema
-  const parseResult = gpsLitePanevezysSchema.safeParse(cols);
-  if (!parseResult.success) {
-    return null;
-  }
-  
-  const row = parseResult.data;
-  const vehicleNumber = row[7];
-  
-  // Validate essential fields
-  if (vehicleNumber === '' || !Number.isFinite(row[2]) || !Number.isFinite(row[3])) {
+function parseLiteLine(
+  cols: string[],
+  cityId: string,
+  format: LiteFormatDescriptor
+): Vehicle | null {
+  // Check minimum column count
+  if (cols.length < format.minColumns) {
     return null;
   }
 
-  const longitude = normalizeCoordinate(row[2]);
-  const latitude = normalizeCoordinate(row[3]);
-  const speed = normalizeSpeed(row[4]);
-  const bearing = normalizeBearing(row[5]);
-  const route = row[1];
-  const id = `${city}-${vehicleNumber}`;
+  // Extract vehicle ID
+  const vehicleNumber = cols[format.vehicleIdIndex]?.trim();
+  if (vehicleNumber === undefined || vehicleNumber === '') {
+    return null;
+  }
+
+  // Extract and validate coordinates
+  const latRaw = Number(cols[format.coordIndices[0]]);
+  const lonRaw = Number(cols[format.coordIndices[1]]);
+  
+  if (!Number.isFinite(latRaw) || !Number.isFinite(lonRaw)) {
+    return null;
+  }
+
+  // Extract route (may be empty)
+  const route = cols[format.routeIndex]?.trim() ?? '';
+
+  // Extract speed and bearing
+  const speedRaw = Number(cols[format.speedIndex]);
+  const bearingRaw = Number(cols[format.bearingIndex]);
+
+  // Normalize values
+  const latitude = normalizeCoordinate(latRaw);
+  const longitude = normalizeCoordinate(lonRaw);
+  const speed = normalizeSpeed(Number.isFinite(speedRaw) ? speedRaw : 0);
+  const bearing = normalizeBearing(Number.isFinite(bearingRaw) ? bearingRaw : 0);
+
+  // Determine vehicle type (lite format typically doesn't specify, default to bus)
+  const type: VehicleType = 'bus';
+
+  const id = `${cityId}-${vehicleNumber}`;
 
   return {
     id,
     vehicleNumber,
     route,
-    type: 'bus' as VehicleType, // Lite format doesn't specify type
+    type,
     latitude,
     longitude,
     bearing,
@@ -175,48 +194,21 @@ function parsePanevezysLine(cols: string[], city: CityId): Vehicle | null {
   };
 }
 
+// =============================================================================
+// Legacy Compatibility
+// =============================================================================
+
 /**
- * Parse a line from Tauragė GPS lite format (8 columns).
+ * @deprecated Use isLiteFormat(cityConfig) instead.
+ * Legacy type for cities that use lite GPS format.
  */
-function parseTaurageLine(cols: string[], city: CityId): Vehicle | null {
-  // Validate with Zod schema
-  const parseResult = gpsLiteTaurageSchema.safeParse(cols);
-  if (!parseResult.success) {
-    return null;
-  }
-  
-  const row = parseResult.data;
-  const vehicleNumber = row[6];
-  
-  // Validate essential fields
-  if (vehicleNumber === '' || !Number.isFinite(row[2]) || !Number.isFinite(row[3])) {
-    return null;
-  }
+export type LiteCityId = 'panevezys' | 'taurage';
 
-  const longitude = normalizeCoordinate(row[2]);
-  const latitude = normalizeCoordinate(row[3]);
-  const speed = normalizeSpeed(row[4]);
-  const bearing = normalizeBearing(row[5]);
-  const route = row[1];
-
-  const id = `${city}-${vehicleNumber}`;
-
-  return {
-    id,
-    vehicleNumber,
-    route,
-    type: 'bus' as VehicleType, // Lite format doesn't specify type
-    latitude,
-    longitude,
-    bearing,
-    speed,
-    destination: null, // Needs GTFS enrichment
-    delaySeconds: null,
-    tripId: null,
-    gtfsTripId: null,
-    nextStopId: null,
-    arrivalTimeSeconds: null,
-    isStale: false, // No timestamp in lite format
-    measuredAt: new Date(), // Use server receive time
-  };
+/**
+ * @deprecated Use isLiteFormat(cityConfig) instead.
+ * Check if a city uses lite GPS format.
+ */
+// eslint-disable-next-line @typescript-eslint/no-deprecated
+export function isLiteCity(cityId: string): cityId is LiteCityId {
+  return cityId in LITE_FORMAT_DESCRIPTORS;
 }

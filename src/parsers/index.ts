@@ -10,7 +10,11 @@ export {
 
 export {
   parseGpsLiteStream,
-  isLiteCity,
+  getLiteFormatDescriptor,
+  isLiteFormat,
   type GpsLiteParseOptions,
-  type LiteCityId,
 } from './gps-lite.js';
+
+// Legacy exports (deprecated, kept for backwards compatibility)
+// eslint-disable-next-line @typescript-eslint/no-deprecated
+export { isLiteCity, type LiteCityId } from './gps-lite.js';

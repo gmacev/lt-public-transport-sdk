@@ -9,7 +9,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { parseGpsLiteStream, isLiteCity } from '../parsers/gps-lite.js';
+import { parseGpsLiteStream, isLiteCity, getLiteFormatDescriptor } from '../parsers/gps-lite.js';
+import { LITE_FORMAT_DESCRIPTORS } from '../config.js';
 
 // =============================================================================
 // Fixtures: Panevėžys Format (9 columns)
@@ -43,6 +44,13 @@ const ZERO_COORDS_ROW = '2,12,0,0,35,180,0,VEH999,0';
 const OUTSIDE_LT_ROW = '2,12,2352222,48856614,35,180,0,PARIS,0';
 
 // =============================================================================
+// Format Descriptors for Tests
+// =============================================================================
+
+const PANEVEZYS_FORMAT = LITE_FORMAT_DESCRIPTORS.panevezys;
+const TAURAGE_FORMAT = LITE_FORMAT_DESCRIPTORS.taurage;
+
+// =============================================================================
 // Test Suites
 // =============================================================================
 
@@ -64,10 +72,35 @@ describe('GPS Lite Parser', () => {
       expect(isLiteCity('kaunas')).toBe(false);
     });
   });
+  
+  describe('getLiteFormatDescriptor', () => {
+    it('should return descriptor for known cities', () => {
+      expect(getLiteFormatDescriptor('panevezys')).toBeDefined();
+      expect(getLiteFormatDescriptor('taurage')).toBeDefined();
+    });
+    
+    it('should return undefined for unknown cities', () => {
+      expect(getLiteFormatDescriptor('vilnius')).toBeUndefined();
+      expect(getLiteFormatDescriptor('unknown')).toBeUndefined();
+    });
+    
+    it('should prefer liteFormat from cityConfig over built-in', () => {
+      const customFormat = { minColumns: 5, vehicleIdIndex: 4, routeIndex: 0, coordIndices: [1, 2] as const, speedIndex: 3, bearingIndex: 3 };
+      const mockConfig = { 
+        id: 'test', 
+        tier: 'silver' as const, 
+        gps: { enabled: true, format: 'lite' as const, url: null }, 
+        gtfs: { enabled: false, url: '' },
+        liteFormat: customFormat
+      };
+      
+      expect(getLiteFormatDescriptor('test', mockConfig)).toBe(customFormat);
+    });
+  });
 
   describe('Panevėžys Format (9 columns)', () => {
     it('should parse valid Panevėžys row', () => {
-      const vehicles = parseGpsLiteStream(PANEVEZYS_ROW_1, 'panevezys', { filterInvalidCoords: false });
+      const vehicles = parseGpsLiteStream(PANEVEZYS_ROW_1, 'panevezys', PANEVEZYS_FORMAT, { filterInvalidCoords: false });
       
       expect(vehicles).toHaveLength(1);
       expect(vehicles[0]).toBeDefined();
@@ -84,7 +117,7 @@ describe('GPS Lite Parser', () => {
 
     it('should parse multiple Panevėžys rows', () => {
       const stream = `${PANEVEZYS_ROW_1}\n${PANEVEZYS_ROW_2}\n${PANEVEZYS_ROW_3}`;
-      const vehicles = parseGpsLiteStream(stream, 'panevezys', { filterInvalidCoords: false });
+      const vehicles = parseGpsLiteStream(stream, 'panevezys', PANEVEZYS_FORMAT, { filterInvalidCoords: false });
       
       expect(vehicles).toHaveLength(3);
       expect(vehicles[0]!.route).toBe('12');
@@ -93,12 +126,12 @@ describe('GPS Lite Parser', () => {
     });
 
     it('should handle alphanumeric routes in Panevėžys', () => {
-      const vehicles = parseGpsLiteStream(PANEVEZYS_ROW_2, 'panevezys', { filterInvalidCoords: false });
+      const vehicles = parseGpsLiteStream(PANEVEZYS_ROW_2, 'panevezys', PANEVEZYS_FORMAT, { filterInvalidCoords: false });
       expect(vehicles[0]!.route).toBe('5A');
     });
 
     it('should handle empty route', () => {
-      const vehicles = parseGpsLiteStream(PANEVEZYS_EMPTY_ROUTE, 'panevezys', { filterInvalidCoords: false });
+      const vehicles = parseGpsLiteStream(PANEVEZYS_EMPTY_ROUTE, 'panevezys', PANEVEZYS_FORMAT, { filterInvalidCoords: false });
       expect(vehicles).toHaveLength(1);
       expect(vehicles[0]!.route).toBe('');
     });
@@ -106,7 +139,7 @@ describe('GPS Lite Parser', () => {
 
   describe('Tauragė Format (8 columns)', () => {
     it('should parse valid Tauragė row', () => {
-      const vehicles = parseGpsLiteStream(TAURAGE_ROW_1, 'taurage', { filterInvalidCoords: false });
+      const vehicles = parseGpsLiteStream(TAURAGE_ROW_1, 'taurage', TAURAGE_FORMAT, { filterInvalidCoords: false });
       
       expect(vehicles).toHaveLength(1);
       expect(vehicles[0]).toBeDefined();
@@ -120,7 +153,7 @@ describe('GPS Lite Parser', () => {
 
     it('should parse alphanumeric routes (S11, J25, R1)', () => {
       const stream = `${TAURAGE_ROW_1}\n${TAURAGE_ROW_2}\n${TAURAGE_ROW_3}`;
-      const vehicles = parseGpsLiteStream(stream, 'taurage', { filterInvalidCoords: false });
+      const vehicles = parseGpsLiteStream(stream, 'taurage', TAURAGE_FORMAT, { filterInvalidCoords: false });
       
       expect(vehicles).toHaveLength(3);
       expect(vehicles[0]!.route).toBe('S11');
@@ -129,34 +162,34 @@ describe('GPS Lite Parser', () => {
     });
 
     it('should correctly map vehicleId from column 6 (0-indexed)', () => {
-      const vehicles = parseGpsLiteStream(TAURAGE_ROW_2, 'taurage', { filterInvalidCoords: false });
+      const vehicles = parseGpsLiteStream(TAURAGE_ROW_2, 'taurage', TAURAGE_FORMAT, { filterInvalidCoords: false });
       expect(vehicles[0]!.vehicleNumber).toBe('TAU002');
     });
   });
 
   describe('Empty and Edge Cases', () => {
     it('should return empty array for empty stream', () => {
-      const vehicles = parseGpsLiteStream(EMPTY_STREAM, 'panevezys', {});
+      const vehicles = parseGpsLiteStream(EMPTY_STREAM, 'panevezys', PANEVEZYS_FORMAT, {});
       expect(vehicles).toEqual([]);
     });
 
     it('should skip malformed rows and continue parsing', () => {
       const stream = `${PANEVEZYS_ROW_1}\n${MALFORMED_ROW}\n${PANEVEZYS_ROW_2}`;
-      const vehicles = parseGpsLiteStream(stream, 'panevezys', { filterInvalidCoords: false });
+      const vehicles = parseGpsLiteStream(stream, 'panevezys', PANEVEZYS_FORMAT, { filterInvalidCoords: false });
       
       expect(vehicles).toHaveLength(2);
     });
 
     it('should handle blank lines', () => {
       const stream = `${PANEVEZYS_ROW_1}\n\n\n${PANEVEZYS_ROW_2}`;
-      const vehicles = parseGpsLiteStream(stream, 'panevezys', { filterInvalidCoords: false });
+      const vehicles = parseGpsLiteStream(stream, 'panevezys', PANEVEZYS_FORMAT, { filterInvalidCoords: false });
       
       expect(vehicles).toHaveLength(2);
     });
 
     it('should handle Windows line endings (CRLF)', () => {
       const stream = `${PANEVEZYS_ROW_1}\r\n${PANEVEZYS_ROW_2}`;
-      const vehicles = parseGpsLiteStream(stream, 'panevezys', { filterInvalidCoords: false });
+      const vehicles = parseGpsLiteStream(stream, 'panevezys', PANEVEZYS_FORMAT, { filterInvalidCoords: false });
       
       expect(vehicles).toHaveLength(2);
     });
@@ -165,21 +198,21 @@ describe('GPS Lite Parser', () => {
   describe('Coordinate Filtering', () => {
     it('should filter zero coordinates when filterInvalidCoords is true', () => {
       const stream = `${PANEVEZYS_ROW_1}\n${ZERO_COORDS_ROW}`;
-      const vehicles = parseGpsLiteStream(stream, 'panevezys', { filterInvalidCoords: true });
+      const vehicles = parseGpsLiteStream(stream, 'panevezys', PANEVEZYS_FORMAT, { filterInvalidCoords: true });
       
       expect(vehicles).toHaveLength(1);
     });
 
     it('should include zero coordinates when filterInvalidCoords is false', () => {
       const stream = `${PANEVEZYS_ROW_1}\n${ZERO_COORDS_ROW}`;
-      const vehicles = parseGpsLiteStream(stream, 'panevezys', { filterInvalidCoords: false });
+      const vehicles = parseGpsLiteStream(stream, 'panevezys', PANEVEZYS_FORMAT, { filterInvalidCoords: false });
       
       expect(vehicles).toHaveLength(2);
     });
 
     it('should filter coordinates outside Lithuania bounds', () => {
       const stream = `${PANEVEZYS_ROW_1}\n${OUTSIDE_LT_ROW}`;
-      const vehicles = parseGpsLiteStream(stream, 'panevezys', { filterInvalidCoords: true });
+      const vehicles = parseGpsLiteStream(stream, 'panevezys', PANEVEZYS_FORMAT, { filterInvalidCoords: true });
       
       expect(vehicles).toHaveLength(1);
     });
@@ -188,7 +221,7 @@ describe('GPS Lite Parser', () => {
   describe('Vehicle ID Generation', () => {
     it('should generate unique vehicle IDs', () => {
       const stream = `${PANEVEZYS_ROW_1}\n${PANEVEZYS_ROW_2}`;
-      const vehicles = parseGpsLiteStream(stream, 'panevezys', { filterInvalidCoords: false });
+      const vehicles = parseGpsLiteStream(stream, 'panevezys', PANEVEZYS_FORMAT, { filterInvalidCoords: false });
       
       expect(vehicles[0]!.id).toBeDefined();
       expect(vehicles[1]!.id).toBeDefined();
@@ -196,24 +229,24 @@ describe('GPS Lite Parser', () => {
     });
 
     it('should include city in ID', () => {
-      const vehicles = parseGpsLiteStream(PANEVEZYS_ROW_1, 'panevezys', { filterInvalidCoords: false });
+      const vehicles = parseGpsLiteStream(PANEVEZYS_ROW_1, 'panevezys', PANEVEZYS_FORMAT, { filterInvalidCoords: false });
       expect(vehicles[0]!.id).toContain('panevezys');
     });
   });
 
   describe('Default Values', () => {
     it('should default type to bus for all lite format vehicles', () => {
-      const vehicles = parseGpsLiteStream(PANEVEZYS_ROW_1, 'panevezys', { filterInvalidCoords: false });
+      const vehicles = parseGpsLiteStream(PANEVEZYS_ROW_1, 'panevezys', PANEVEZYS_FORMAT, { filterInvalidCoords: false });
       expect(vehicles[0]!.type).toBe('bus');
     });
 
     it('should set destination to null (no GTFS in stream)', () => {
-      const vehicles = parseGpsLiteStream(PANEVEZYS_ROW_1, 'panevezys', { filterInvalidCoords: false });
+      const vehicles = parseGpsLiteStream(PANEVEZYS_ROW_1, 'panevezys', PANEVEZYS_FORMAT, { filterInvalidCoords: false });
       expect(vehicles[0]!.destination).toBeNull();
     });
 
     it('should set gtfsTripId to null', () => {
-      const vehicles = parseGpsLiteStream(PANEVEZYS_ROW_1, 'panevezys', { filterInvalidCoords: false });
+      const vehicles = parseGpsLiteStream(PANEVEZYS_ROW_1, 'panevezys', PANEVEZYS_FORMAT, { filterInvalidCoords: false });
       expect(vehicles[0]!.gtfsTripId).toBeNull();
     });
   });
