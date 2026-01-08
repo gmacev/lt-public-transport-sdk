@@ -13,4 +13,4 @@ yarn-error.log*
 dist
 docs
 .DS_Store
-cache-test-gtfs
+.cache-test-gtfs
