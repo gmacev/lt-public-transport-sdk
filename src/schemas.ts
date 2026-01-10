@@ -117,6 +117,7 @@ export const gtfsStopSchema = z.object({
   // Optional fields
   stop_code: z.string().optional(),
   stop_desc: z.string().optional(),
+  stop_url: z.string().optional(),
   location_type: z.coerce.number().optional(),
   parent_station: z.string().optional(),
 }).loose();

@@ -131,6 +131,9 @@ export interface Stop {
 
   /** Longitude in WGS84 decimal degrees */
   readonly longitude: number;
+
+  /** URL with stop information, if available */
+  readonly url: string | null;
 }
 
 /**

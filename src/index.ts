@@ -338,7 +338,7 @@ export class LtTransport {
     }
 
     // Fetch GPS data
-    const text = await this.fetchText(config.gps.url, city);
+    const { text, serverTime } = await this.fetchText(config.gps.url, city);
 
     // Parse based on format
     let vehicles: Vehicle[];
@@ -349,6 +349,7 @@ export class LtTransport {
         staleThresholdMs: this.staleThresholdMs,
         filterStale: this.filterStale,
         filterInvalidCoords: this.filterInvalidCoords,
+        serverTime,
       });
     } else if (config.gps.format === 'lite') {
       // Silver tier: headerless CSV using format descriptor
@@ -706,8 +707,9 @@ export class LtTransport {
 
   /**
    * Fetch text content from URL.
+   * Returns both the text and the server's Date header for stable timestamps.
    */
-  private async fetchText(url: string, city: string): Promise<string> {
+  private async fetchText(url: string, city: string): Promise<{ text: string; serverTime: Date }> {
     const controller = new AbortController();
     const timeout = setTimeout(() => { controller.abort(); }, this.requestTimeout);
 
@@ -725,7 +727,12 @@ export class LtTransport {
         );
       }
 
-      return await response.text();
+      // Extract server time from Date header for stable timestamps
+      const dateHeader = response.headers.get('date');
+      const serverTime = dateHeader !== null ? new Date(dateHeader) : new Date();
+
+      const text = await response.text();
+      return { text, serverTime };
     } catch (error) {
       if (error instanceof TransportNetworkError) {
         throw error;

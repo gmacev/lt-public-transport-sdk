@@ -213,6 +213,7 @@ export function parseStopsContent(content: string): Stop[] {
           : null,
         latitude: validated.stop_lat,
         longitude: validated.stop_lon,
+        url: validated.stop_url ?? null,
       });
     } catch {
       // Skip malformed rows

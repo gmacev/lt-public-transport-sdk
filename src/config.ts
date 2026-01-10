@@ -158,28 +158,41 @@ export interface CityConfig {
 /**
  * Base URL for stops.lt infrastructure.
  */
-const BASE_URL = 'https://www.stops.lt';
+const STOPS_LT_BASE_URL = 'https://www.stops.lt';
 
 /**
- * Helper to build GPS full URL.
+ * Base URL for visimarsrutai.lt infrastructure.
+ */
+const VISIMARSRUTAI_BASE_URL = 'https://www.visimarsrutai.lt';
+
+/**
+ * Helper to build GPS full URL (stops.lt).
  */
 function gpsFullUrl(city: string): string {
-  return `${BASE_URL}/${city}/gps_full.txt`;
+  return `${STOPS_LT_BASE_URL}/${city}/gps_full.txt`;
 }
 
 /**
- * Helper to build GPS lite URL.
+ * Helper to build GPS lite URL (stops.lt).
  */
 function gpsLiteUrl(city: string): string {
-  return `${BASE_URL}/${city}/gps.txt`;
+  return `${STOPS_LT_BASE_URL}/${city}/gps.txt`;
 }
 
 /**
- * Helper to build GTFS URL.
- * Note: URL pattern uses double city name: /city/city/gtfs.zip
+ * Helper to build GTFS URL (visimarsrutai.lt).
+ * Used for bronze-tier cities (GTFS-only, no GPS).
  */
-function gtfsUrl(city: string): string {
-  return `${BASE_URL}/${city}/${city}/gtfs.zip`;
+function gtfsUrl(dataset: string): string {
+  return `${VISIMARSRUTAI_BASE_URL}/gtfs/${dataset}.zip`;
+}
+
+/**
+ * Helper to build GTFS URL (stops.lt).
+ * Used for gold/silver-tier cities to ensure GPS ↔ GTFS ID compatibility.
+ */
+function stopsLtGtfsUrl(city: string): string {
+  return `${STOPS_LT_BASE_URL}/${city}/${city}/gtfs.zip`;
 }
 
 /**
@@ -210,7 +223,7 @@ const CITY_CONFIGS_INTERNAL = {
     },
     gtfs: {
       enabled: true,
-      url: gtfsUrl('vilnius'),
+      url: stopsLtGtfsUrl('vilnius'),
     },
   },
 
@@ -224,7 +237,7 @@ const CITY_CONFIGS_INTERNAL = {
     },
     gtfs: {
       enabled: true,
-      url: gtfsUrl('kaunas'),
+      url: stopsLtGtfsUrl('kaunas'),
     },
   },
 
@@ -238,7 +251,7 @@ const CITY_CONFIGS_INTERNAL = {
     },
     gtfs: {
       enabled: true,
-      url: gtfsUrl('klaipeda'),
+      url: stopsLtGtfsUrl('klaipeda'),
     },
   },
 
@@ -252,7 +265,7 @@ const CITY_CONFIGS_INTERNAL = {
     },
     gtfs: {
       enabled: true,
-      url: gtfsUrl('alytus'),
+      url: stopsLtGtfsUrl('alytus'),
     },
   },
 
@@ -266,7 +279,7 @@ const CITY_CONFIGS_INTERNAL = {
     },
     gtfs: {
       enabled: true,
-      url: gtfsUrl('druskininkai'),
+      url: stopsLtGtfsUrl('druskininkai'),
     },
   },
 
@@ -280,7 +293,7 @@ const CITY_CONFIGS_INTERNAL = {
     },
     gtfs: {
       enabled: true,
-      url: gtfsUrl('panevezys'),
+      url: stopsLtGtfsUrl('panevezys'),
     },
     liteFormat: LITE_FORMAT_DESCRIPTORS.panevezys,
   },
@@ -295,7 +308,7 @@ const CITY_CONFIGS_INTERNAL = {
     },
     gtfs: {
       enabled: true,
-      url: gtfsUrl('taurage'),
+      url: stopsLtGtfsUrl('taurage'),
     },
     liteFormat: LITE_FORMAT_DESCRIPTORS.taurage,
   },
@@ -310,7 +323,7 @@ const CITY_CONFIGS_INTERNAL = {
     },
     gtfs: {
       enabled: true,
-      url: gtfsUrl('siauliai'),
+      url: gtfsUrl('SiauliuM'),
     },
   },
 
@@ -324,8 +337,282 @@ const CITY_CONFIGS_INTERNAL = {
     },
     gtfs: {
       enabled: true,
-      url: gtfsUrl('utena'),
+      url: gtfsUrl('UtenosR'),
     },
+  },
+
+  /**
+   * National intercity bus data from LTSAR (Lietuvos transporto saugos administracija).
+   * Covers all of Lithuania, not a single city.
+   */
+  intercity: {
+    id: 'intercity',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('LTSAR') },
+  },
+
+  // ==========================================================================
+  // Regional / District Bus Networks (visimarsrutai.lt)
+  // All bronze tier - GTFS only, no live GPS
+  // ==========================================================================
+
+  // Cities / Municipalities
+  palanga: {
+    id: 'palanga',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('PalangosM') },
+  },
+  visaginas: {
+    id: 'visaginas',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('VisaginoM') },
+  },
+  marijampole: {
+    id: 'marijampole',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('Marijampoles') },
+  },
+  elektrenai: {
+    id: 'elektrenai',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('Elektrenu') },
+  },
+  neringa: {
+    id: 'neringa',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('neringa') },
+  },
+  birstonas: {
+    id: 'birstonas',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('BirstonoSav') },
+  },
+
+  // Districts (Rajonai)
+  akmene: {
+    id: 'akmene',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('AkmenesR') },
+  },
+  alytus_region: {
+    id: 'alytus_region',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('AlytausR') },
+  },
+  anyksciai: {
+    id: 'anyksciai',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('AnyksciuR') },
+  },
+  birzai: {
+    id: 'birzai',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('BirzuR') },
+  },
+  ignalina: {
+    id: 'ignalina',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('IgnalinosR') },
+  },
+  jonava: {
+    id: 'jonava',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('JonavosR') },
+  },
+  joniskis: {
+    id: 'joniskis',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('JoniskioR') },
+  },
+  jurbarkas: {
+    id: 'jurbarkas',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('JurbarkoR') },
+  },
+  kaunas_region: {
+    id: 'kaunas_region',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('KaunoR') },
+  },
+  kedainiai: {
+    id: 'kedainiai',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('KedainiuR') },
+  },
+  kelme: {
+    id: 'kelme',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('KelmesR') },
+  },
+  kaisiadorys: {
+    id: 'kaisiadorys',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('KiasiadoriuR') },
+  },
+  kretinga: {
+    id: 'kretinga',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('KretingosR') },
+  },
+  kupiskis: {
+    id: 'kupiskis',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('KupiskioR') },
+  },
+  lazdijai: {
+    id: 'lazdijai',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('LazdijuR') },
+  },
+  mazeikiai: {
+    id: 'mazeikiai',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('MazeikiuR') },
+  },
+  moletai: {
+    id: 'moletai',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('MoletuR') },
+  },
+  pakruojis: {
+    id: 'pakruojis',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('PakruojoR') },
+  },
+  panevezys_region: {
+    id: 'panevezys_region',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('PanevezioR') },
+  },
+  pasvalys: {
+    id: 'pasvalys',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('PasvalioR') },
+  },
+  plunge: {
+    id: 'plunge',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('PlungesR') },
+  },
+  radviliskis: {
+    id: 'radviliskis',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('RadviliskioR') },
+  },
+  raseiniai: {
+    id: 'raseiniai',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('RaseiniuR') },
+  },
+  rokiskis: {
+    id: 'rokiskis',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('RokiskioR') },
+  },
+  salcininkai: {
+    id: 'salcininkai',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('SalcininkuR') },
+  },
+  siauliai_region: {
+    id: 'siauliai_region',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('SiauliuR') },
+  },
+  silute: {
+    id: 'silute',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('SilutesR') },
+  },
+  sirvintos: {
+    id: 'sirvintos',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('SirvintuR') },
+  },
+  skuodas: {
+    id: 'skuodas',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('SkuodoR') },
+  },
+  svencionys: {
+    id: 'svencionys',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('SvencioniuR') },
+  },
+  trakai: {
+    id: 'trakai',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('TrakuR') },
+  },
+  ukmerge: {
+    id: 'ukmerge',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('UkmergesR') },
+  },
+  varena: {
+    id: 'varena',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('VarenosR') },
+  },
+  vilnius_region: {
+    id: 'vilnius_region',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('VilniausR') },
+  },
+  zarasai: {
+    id: 'zarasai',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('ZarasuR') },
+  },
+
+  // Ferry
+  smiltyne: {
+    id: 'smiltyne',
+    tier: 'bronze',
+    gps: { enabled: false, format: null, url: null },
+    gtfs: { enabled: true, url: gtfsUrl('SmiltynesP') },
   },
 } as const;
 

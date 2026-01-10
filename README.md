@@ -64,17 +64,17 @@ main();
 
 ## 🏙️ Supported Cities
 
-| City             | Tier      | GPS Data | GTFS Data | Formats Handled                        |
-| ---------------- | --------- | -------- | --------- | -------------------------------------- |
-| **Vilnius**      | 🥇 Gold   | ✅ Full  | ✅ Yes    | 18-col CSV, GTFS lookup                |
-| **Kaunas**       | 🥇 Gold   | ✅ Full  | ✅ Yes    | 14-col CSV, Trip/Stop matching         |
-| **Klaipėda**     | 🥇 Gold   | ✅ Full  | ✅ Yes    | 12-col CSV                             |
-| **Alytus**       | 🥇 Gold   | ✅ Full  | ✅ Yes    | 13-col CSV                             |
-| **Druskininkai** | 🥇 Gold   | ✅ Full  | ✅ Yes    | 13-col CSV                             |
-| **Panevėžys**    | 🥈 Silver | ✅ Lite  | ✅ Yes    | 9-col (no header), Integer coords      |
-| **Tauragė**      | 🥈 Silver | ✅ Lite  | ✅ Yes    | 8-col (no header), Alphanumeric routes |
-| **Šiauliai**     | 🥉 Bronze | ❌ No    | ✅ Yes    | GTFS only                              |
-| **Utena**        | 🥉 Bronze | ❌ No    | ✅ Yes    | GTFS only                              |
+The SDK supports **52 cities** across Lithuania, organized into three tiers:
+
+| Tier          | GPS Data | GTFS Data | Examples                                                  |
+| ------------- | -------- | --------- | --------------------------------------------------------- |
+| 🥇 **Gold**   | ✅ Full  | ✅ Yes    | Vilnius, Kaunas, Klaipėda, Alytus, Druskininkai           |
+| 🥈 **Silver** | ✅ Lite  | ✅ Yes    | Panevėžys, Tauragė                                        |
+| � **Bronze**  | ❌ No    | ✅ Yes    | Šiauliai, Utena, Trakai, Palanga, + 40 regional districts |
+
+> See [`CITY_CONFIGS`](https://github.com/gmacev/lt-public-transport-sdk/blob/main/src/config.ts) for the complete list of supported city IDs.
+>
+> Bronze tier includes `intercity` for national bus routes via LTSAR.
 
 ## 🧩 How It Works
 
@@ -278,6 +278,9 @@ interface Stop {
 
   /** Longitude */
   readonly longitude: number;
+
+  /** Stop URL (link to stop info page) */
+  readonly url: string | null;
 }
 ```
 

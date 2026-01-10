@@ -127,6 +127,13 @@ export interface GpsFullParseOptions {
   
   /** Whether to filter out records with invalid coordinates (default: true) */
   filterInvalidCoords?: boolean;
+  
+  /** 
+   * Server response time for stable timestamps.
+   * Used as fallback for cities without MatavimoLaikas.
+   * If not provided, falls back to current client time.
+   */
+  serverTime?: Date;
 }
 
 /**
@@ -149,6 +156,7 @@ export function parseGpsFullStream(
     staleThresholdMs = 5 * 60 * 1000,
     filterStale = false,
     filterInvalidCoords = true,
+    serverTime = new Date(),
   } = options;
 
   const lines = text.split('\n').filter(line => line.trim());
@@ -197,7 +205,7 @@ export function parseGpsFullStream(
     const cols = line.split(',');
     
     try {
-      const vehicle = parseVehicleLine(cols, columnMap, city, staleThresholdMs);
+      const vehicle = parseVehicleLine(cols, columnMap, city, staleThresholdMs, serverTime);
       
       if (vehicle) {
         // Apply filters
@@ -240,7 +248,8 @@ function parseVehicleLine(
   cols: string[],
   columnMap: ColumnMap,
   city: CityId,
-  staleThresholdMs: number
+  staleThresholdMs: number,
+  serverTime: Date
 ): Vehicle | null {
   // Build row object from columns for Zod validation
   const rowObject = buildRowObject(cols, columnMap);
@@ -288,7 +297,7 @@ function parseVehicleLine(
   const arrivalTimeSeconds = row.AtvykimoLaikasSekundemis ?? null;
 
   // Calculate measurement time
-  const measuredAt = calculateMeasuredAtFromRow(row);
+  const measuredAt = calculateMeasuredAtFromRow(row, serverTime);
   const isStale = isDataStale(measuredAt, staleThresholdMs);
 
   // Generate unique ID
@@ -318,8 +327,10 @@ function parseVehicleLine(
 
 /**
  * Calculate measurement time from validated row data.
+ * @param row - Parsed row data
+ * @param fallbackTime - Server time to use when row has no timestamp field
  */
-function calculateMeasuredAtFromRow(row: GpsFullRow): Date {
+function calculateMeasuredAtFromRow(row: GpsFullRow, fallbackTime: Date): Date {
   // Try MatavimoLaikas first (Vilnius, Alytus, Druskininkai)
   if (row.MatavimoLaikas !== undefined && row.MatavimoLaikas > 0) {
     return secondsFromMidnightToDate(row.MatavimoLaikas);
@@ -327,6 +338,6 @@ function calculateMeasuredAtFromRow(row: GpsFullRow): Date {
 
   // Kaunas: AtvykimoLaikasSekundemis is FUTURE arrival, not measurement time.
   // Klaipėda: No time field available.
-  // Fallback to server receive time (now) for both cases.
-  return new Date();
+  // Use server response time for stable timestamps across network latency variance.
+  return fallbackTime;
 }
