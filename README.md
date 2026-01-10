@@ -66,11 +66,11 @@ main();
 
 The SDK supports **52 cities** across Lithuania, organized into three tiers:
 
-| Tier          | GPS Data | GTFS Data | Examples                                                  |
-| ------------- | -------- | --------- | --------------------------------------------------------- |
-| 🥇 **Gold**   | ✅ Full  | ✅ Yes    | Vilnius, Kaunas, Klaipėda, Alytus, Druskininkai           |
-| 🥈 **Silver** | ✅ Lite  | ✅ Yes    | Panevėžys, Tauragė                                        |
-| � **Bronze**  | ❌ No    | ✅ Yes    | Šiauliai, Utena, Trakai, Palanga, + 40 regional districts |
+| Tier          | GPS Data | GTFS Data | Examples                                                            |
+| ------------- | -------- | --------- | ------------------------------------------------------------------- |
+| 🥇 **Gold**   | ✅ Full  | ✅ Yes    | Vilnius, Kaunas, Klaipėda, Alytus, Druskininkai, Panevėžys, Tauragė |
+| 🥈 **Silver** | ✅ Lite  | ✅ Yes    | _(none currently — available for custom cities)_                    |
+| 🥉 **Bronze** | ❌ No    | ✅ Yes    | Šiauliai, Utena, Trakai, Palanga, + 40 regional districts           |
 
 > See [`CITY_CONFIGS`](https://github.com/gmacev/lt-public-transport-sdk/blob/master/src/config.ts) for the complete list of supported city IDs.
 >

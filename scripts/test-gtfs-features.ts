@@ -1,4 +1,5 @@
 import { LtTransport } from '../dist/index.js';
+import { rmSync } from 'node:fs';
 
 /**
  * Test Script: GTFS Features
@@ -6,6 +7,8 @@ import { LtTransport } from '../dist/index.js';
  * Verifies the new GTFS expansion features by syncing a small city
  * and querying all new data endpoints.
  */
+
+const CACHE_DIR = './.cache-test-gtfs';
 
 async function main() {
   console.log('🚍 GTFS FEATURES TEST');
@@ -16,7 +19,7 @@ async function main() {
   
   const client = new LtTransport({
     // Use a temp cache dir to ensure fresh sync
-    cacheDir: './.cache-test-gtfs',
+    cacheDir: CACHE_DIR,
   });
 
   console.log(`📦 Syncing ${city}...`);
@@ -91,7 +94,17 @@ async function main() {
   console.log('\n✅ Test Complete');
 }
 
-main().catch(err => {
-  console.error('❌ Test Failed:', err);
-  process.exit(1);
-});
+main()
+  .catch(err => {
+    console.error('❌ Test Failed:', err);
+    process.exit(1);
+  })
+  .finally(() => {
+    // Cleanup test cache folder
+    try {
+      rmSync(CACHE_DIR, { recursive: true, force: true });
+    } catch {
+      // Ignore cleanup errors
+    }
+  });
+

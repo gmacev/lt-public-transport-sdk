@@ -793,7 +793,7 @@ export type {
 export { GTFS_ROUTE_TYPE_MAP, LT_TRANSPORT_TYPE_MAP } from './types.js';
 
 // Config
-export { CITY_CONFIGS, ALL_CITY_IDS, getCityConfig, getCitiesByTier, hasGpsData, hasGtfsData, LITE_FORMAT_DESCRIPTORS } from './config.js';
+export { CITY_CONFIGS, ALL_CITY_IDS, getCityConfig, getCitiesByTier, hasGpsData, hasGtfsData } from './config.js';
 export type { CityConfig, GpsConfig, GtfsConfig, LiteFormatDescriptor } from './config.js';
 
 // Errors

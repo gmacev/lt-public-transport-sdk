@@ -55,40 +55,6 @@ export interface LiteFormatDescriptor {
   readonly timestampIndex?: number;
 }
 
-/**
- * Built-in lite format descriptors for known cities.
- * Users can override these or define new ones via config.
- */
-export const LITE_FORMAT_DESCRIPTORS: Readonly<Record<string, LiteFormatDescriptor>> = {
-  /**
-   * Panevėžys format (9 columns, no header):
-   * [0] type, [1] route, [2] lon, [3] lat, [4] speed, [5] azimuth, [6] ?, [7] vehicleId, [8] ?
-   */
-  panevezys: {
-    minColumns: 9,
-    vehicleIdIndex: 7,
-    routeIndex: 1,
-    coordIndices: [3, 2] as const, // lat at 3, lon at 2
-    speedIndex: 4,
-    bearingIndex: 5,
-    typeIndex: 0,
-  },
-  
-  /**
-   * Tauragė format (8 columns, no header):
-   * [0] type, [1] route, [2] lon, [3] lat, [4] speed, [5] azimuth, [6] vehicleId, [7] ?
-   */
-  taurage: {
-    minColumns: 8,
-    vehicleIdIndex: 6,
-    routeIndex: 1,
-    coordIndices: [3, 2] as const, // lat at 3, lon at 2
-    speedIndex: 4,
-    bearingIndex: 5,
-    typeIndex: 0,
-  },
-} as const;
-
 // =============================================================================
 // Configuration Interfaces
 // =============================================================================
@@ -173,10 +139,11 @@ function gpsFullUrl(city: string): string {
 }
 
 /**
- * Helper to build GPS lite URL (stops.lt).
+ * Helper to build GPS full v2 URL (stops.lt).
+ * Used for cities upgraded from lite format to unified v2 format.
  */
-function gpsLiteUrl(city: string): string {
-  return `${STOPS_LT_BASE_URL}/${city}/gps.txt`;
+function gpsFullV2Url(city: string): string {
+  return `${STOPS_LT_BASE_URL}/${city}/gps_full_v2.txt`;
 }
 
 /**
@@ -285,32 +252,30 @@ const CITY_CONFIGS_INTERNAL = {
 
   panevezys: {
     id: 'panevezys',
-    tier: 'silver',
+    tier: 'gold',
     gps: {
       enabled: true,
-      format: 'lite',
-      url: gpsLiteUrl('panevezys'),
+      format: 'full',
+      url: gpsFullV2Url('panevezys'),
     },
     gtfs: {
       enabled: true,
       url: stopsLtGtfsUrl('panevezys'),
     },
-    liteFormat: LITE_FORMAT_DESCRIPTORS.panevezys,
   },
 
   taurage: {
     id: 'taurage',
-    tier: 'silver',
+    tier: 'gold',
     gps: {
       enabled: true,
-      format: 'lite',
-      url: gpsLiteUrl('taurage'),
+      format: 'full',
+      url: gpsFullV2Url('taurage'),
     },
     gtfs: {
       enabled: true,
       url: stopsLtGtfsUrl('taurage'),
     },
-    liteFormat: LITE_FORMAT_DESCRIPTORS.taurage,
   },
 
   siauliai: {

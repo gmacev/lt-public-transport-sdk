@@ -1,6 +1,6 @@
 {
   "name": "lt-public-transport-sdk",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "TypeScript SDK for real-time public transport data in Lithuanian cities. Provides vehicle GPS positions, GTFS routes, and stops from stops.lt.",
   "type": "module",
   "main": "dist/index.js",

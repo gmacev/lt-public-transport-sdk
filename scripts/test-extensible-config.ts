@@ -9,7 +9,18 @@
  * Run with: npx tsx scripts/test-extensible-config.ts
  */
 
-import { LtTransport, LITE_FORMAT_DESCRIPTORS, type CityConfig } from '../src/index.js';
+import { LtTransport, type CityConfig, type LiteFormatDescriptor } from '../src/index.js';
+
+// Example lite format descriptor for testing custom cities
+const EXAMPLE_LITE_FORMAT: LiteFormatDescriptor = {
+  minColumns: 9,
+  vehicleIdIndex: 7,
+  routeIndex: 1,
+  coordIndices: [3, 2] as const,
+  speedIndex: 4,
+  bearingIndex: 5,
+  typeIndex: 0,
+};
 
 async function main() {
   console.log('='.repeat(60));
@@ -27,8 +38,8 @@ async function main() {
     console.log(`   ✗ Vilnius failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 
-  // Test 2: Existing silver-tier city (Panevėžys)
-  console.log('2. Testing existing silver-tier city (Panevėžys)...');
+  // Test 2: Existing gold-tier city (Panevėžys - now uses v2 full format)
+  console.log('2. Testing existing gold-tier city (Panevėžys)...');
   try {
     const transport = new LtTransport();
     const panevezys = await transport.getVehicles('panevezys');
@@ -46,13 +57,13 @@ async function main() {
       gps: {
         enabled: true,
         format: 'lite',
-        url: 'https://www.stops.lt/panevezys/gps.txt', // Use panevezys URL for testing
+        url: 'https://www.stops.lt/panevezys/gps.txt', // Use old panevezys lite URL for testing
       },
       gtfs: {
         enabled: true,
         url: 'https://www.stops.lt/panevezys/panevezys/gtfs.zip',
       },
-      liteFormat: LITE_FORMAT_DESCRIPTORS.panevezys, // Use panevezys format
+      liteFormat: EXAMPLE_LITE_FORMAT, // Use inline format
     };
 
     const transport = new LtTransport({
@@ -78,21 +89,14 @@ async function main() {
     console.log(`   ✗ Custom city failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 
-  // Test 4: City override (modifying panevezys config)
+  // Test 4: City override (Panevėžys is now gold, but we can still add liteFormat)
   console.log('4. Testing city override...');
   try {
     const transport = new LtTransport({
       cityOverrides: {
         panevezys: {
-          // Override the liteFormat with same values (just testing the mechanism)
-          liteFormat: {
-            minColumns: 9,
-            vehicleIdIndex: 7,
-            routeIndex: 1,
-            coordIndices: [3, 2] as const,
-            speedIndex: 4,
-            bearingIndex: 5,
-          },
+          // Add a liteFormat to gold-tier city (testing override mechanism)
+          liteFormat: EXAMPLE_LITE_FORMAT,
         },
       },
     });

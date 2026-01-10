@@ -1,19 +1,51 @@
 /**
  * GPS Lite Format Parser Unit Tests
  * 
- * Tests parsing of Panevėžys (9-col) and Tauragė (8-col) lite formats.
+ * Tests parsing of lite format using descriptor-based column mapping.
  * 
  * Format notes:
- * - Panevėžys: 9 columns, cols [2],[3] are lon/lat as integers (/1,000,000)
- * - Tauragė: 8 columns, cols [2],[3] are lon/lat as integers (/1,000,000)
+ * - Lite format has no header row
+ * - Columns are mapped via LiteFormatDescriptor indices
  */
 
 import { describe, it, expect } from 'vitest';
 import { parseGpsLiteStream, isLiteCity, getLiteFormatDescriptor } from '../parsers/gps-lite.js';
-import { LITE_FORMAT_DESCRIPTORS } from '../config.js';
+import type { LiteFormatDescriptor } from '../config.js';
 
 // =============================================================================
-// Fixtures: Panevėžys Format (9 columns)
+// Test Format Descriptors (inline fixtures)
+// =============================================================================
+
+/**
+ * Example Panevėžys-style format (9 columns, no header):
+ * [0] type, [1] route, [2] lon, [3] lat, [4] speed, [5] azimuth, [6] ?, [7] vehicleId, [8] ?
+ */
+const PANEVEZYS_FORMAT: LiteFormatDescriptor = {
+  minColumns: 9,
+  vehicleIdIndex: 7,
+  routeIndex: 1,
+  coordIndices: [3, 2] as const, // lat at 3, lon at 2
+  speedIndex: 4,
+  bearingIndex: 5,
+  typeIndex: 0,
+};
+
+/**
+ * Example Tauragė-style format (8 columns, no header):
+ * [0] type, [1] route, [2] lon, [3] lat, [4] speed, [5] azimuth, [6] vehicleId, [7] ?
+ */
+const TAURAGE_FORMAT: LiteFormatDescriptor = {
+  minColumns: 8,
+  vehicleIdIndex: 6,
+  routeIndex: 1,
+  coordIndices: [3, 2] as const, // lat at 3, lon at 2
+  speedIndex: 4,
+  bearingIndex: 5,
+  typeIndex: 0,
+};
+
+// =============================================================================
+// Fixtures: 9-column Format
 // =============================================================================
 
 // Format: type,route,lon,lat,speed,azimuth,door?,vehicleId,unknown
@@ -24,7 +56,7 @@ const PANEVEZYS_ROW_3 = '2,23,24350000,55720000,40,270,0,VEH003,0';
 const PANEVEZYS_EMPTY_ROUTE = '2,,24358920,55728450,35,180,0,VEH004,0';
 
 // =============================================================================
-// Fixtures: Tauragė Format (8 columns)
+// Fixtures: 8-column Format
 // =============================================================================
 
 // Format: type,route,lon,lat,speed,azimuth,vehicleId,unknown
@@ -44,48 +76,35 @@ const ZERO_COORDS_ROW = '2,12,0,0,35,180,0,VEH999,0';
 const OUTSIDE_LT_ROW = '2,12,2352222,48856614,35,180,0,PARIS,0';
 
 // =============================================================================
-// Format Descriptors for Tests
-// =============================================================================
-
-const PANEVEZYS_FORMAT = LITE_FORMAT_DESCRIPTORS.panevezys;
-const TAURAGE_FORMAT = LITE_FORMAT_DESCRIPTORS.taurage;
-
-// =============================================================================
 // Test Suites
 // =============================================================================
 
 describe('GPS Lite Parser', () => {
-  describe('isLiteCity', () => {
-    it('should identify Panevėžys as lite city', () => {
-      expect(isLiteCity('panevezys')).toBe(true);
-    });
-
-    it('should identify Tauragė as lite city', () => {
-      expect(isLiteCity('taurage')).toBe(true);
-    });
-
-    it('should not identify Vilnius as lite city', () => {
+  describe('isLiteCity (deprecated)', () => {
+    it('should return false for all cities (no built-in lite cities)', () => {
+      expect(isLiteCity('panevezys')).toBe(false);
+      expect(isLiteCity('taurage')).toBe(false);
       expect(isLiteCity('vilnius')).toBe(false);
-    });
-
-    it('should not identify Kaunas as lite city', () => {
       expect(isLiteCity('kaunas')).toBe(false);
     });
   });
   
   describe('getLiteFormatDescriptor', () => {
-    it('should return descriptor for known cities', () => {
-      expect(getLiteFormatDescriptor('panevezys')).toBeDefined();
-      expect(getLiteFormatDescriptor('taurage')).toBeDefined();
-    });
-    
-    it('should return undefined for unknown cities', () => {
-      expect(getLiteFormatDescriptor('vilnius')).toBeUndefined();
+    it('should return undefined without cityConfig', () => {
+      expect(getLiteFormatDescriptor('panevezys')).toBeUndefined();
+      expect(getLiteFormatDescriptor('taurage')).toBeUndefined();
       expect(getLiteFormatDescriptor('unknown')).toBeUndefined();
     });
     
-    it('should prefer liteFormat from cityConfig over built-in', () => {
-      const customFormat = { minColumns: 5, vehicleIdIndex: 4, routeIndex: 0, coordIndices: [1, 2] as const, speedIndex: 3, bearingIndex: 3 };
+    it('should return liteFormat from cityConfig', () => {
+      const customFormat: LiteFormatDescriptor = { 
+        minColumns: 5, 
+        vehicleIdIndex: 4, 
+        routeIndex: 0, 
+        coordIndices: [1, 2] as const, 
+        speedIndex: 3, 
+        bearingIndex: 3 
+      };
       const mockConfig = { 
         id: 'test', 
         tier: 'silver' as const, 

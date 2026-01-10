@@ -13,7 +13,6 @@
 
 import type { Vehicle, VehicleType } from '../types.js';
 import type { LiteFormatDescriptor, CityConfig } from '../config.js';
-import { LITE_FORMAT_DESCRIPTORS } from '../config.js';
 import {
   normalizeCoordinate,
   isValidLithuaniaCoord,
@@ -39,23 +38,18 @@ export interface GpsLiteParseOptions {
 
 /**
  * Get the lite format descriptor for a city.
- * Checks city config first, then falls back to built-in descriptors.
+ * The descriptor must be provided in the city config's liteFormat field.
  * 
- * @param cityId - The city identifier
- * @param cityConfig - Optional city config with custom liteFormat
+ * @param cityId - The city identifier (unused, kept for API compatibility)
+ * @param cityConfig - City config with liteFormat
  * @returns The format descriptor, or undefined if not found
  */
 export function getLiteFormatDescriptor(
-  cityId: string,
+  _cityId: string,
   cityConfig?: CityConfig
 ): LiteFormatDescriptor | undefined {
-  // Priority 1: Explicit liteFormat in city config
-  if (cityConfig?.liteFormat) {
-    return cityConfig.liteFormat;
-  }
-  
-  // Priority 2: Built-in descriptor by city ID
-  return LITE_FORMAT_DESCRIPTORS[cityId];
+  // liteFormat must be explicitly provided in city config
+  return cityConfig?.liteFormat;
 }
 
 /**
@@ -194,21 +188,17 @@ function parseLiteLine(
   };
 }
 
-// =============================================================================
-// Legacy Compatibility
-// =============================================================================
-
 /**
- * @deprecated Use isLiteFormat(cityConfig) instead.
- * Legacy type for cities that use lite GPS format.
+ * @deprecated No built-in cities use lite format anymore.
+ * Use isLiteFormat(cityConfig) to check if a city uses lite format.
  */
-export type LiteCityId = 'panevezys' | 'taurage';
+export type LiteCityId = never;
 
 /**
  * @deprecated Use isLiteFormat(cityConfig) instead.
- * Check if a city uses lite GPS format.
+ * Always returns false since no built-in cities use lite format.
  */
 // eslint-disable-next-line @typescript-eslint/no-deprecated
-export function isLiteCity(cityId: string): cityId is LiteCityId {
-  return cityId in LITE_FORMAT_DESCRIPTORS;
+export function isLiteCity(_cityId: string): _cityId is LiteCityId {
+  return false;
 }
