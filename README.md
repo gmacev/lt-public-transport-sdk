@@ -72,7 +72,7 @@ The SDK supports **52 cities** across Lithuania, organized into three tiers:
 | 🥈 **Silver** | ✅ Lite  | ✅ Yes    | Panevėžys, Tauragė                                        |
 | � **Bronze**  | ❌ No    | ✅ Yes    | Šiauliai, Utena, Trakai, Palanga, + 40 regional districts |
 
-> See [`CITY_CONFIGS`](https://github.com/gmacev/lt-public-transport-sdk/blob/main/src/config.ts) for the complete list of supported city IDs.
+> See [`CITY_CONFIGS`](https://github.com/gmacev/lt-public-transport-sdk/blob/master/src/config.ts) for the complete list of supported city IDs.
 >
 > Bronze tier includes `intercity` for national bus routes via LTSAR.
 
