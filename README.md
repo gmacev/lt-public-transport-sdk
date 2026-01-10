@@ -1,3 +1,5 @@
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-donate-yellow.svg)](https://www.buymeacoffee.com/gmacev)
+
 # lt-public-transport-sdk
 
 A robust, type-safe TypeScript SDK for accessing **real-time public transport data** in Lithuanian cities.
@@ -493,3 +495,9 @@ npm run test:integration
 ## 📄 License
 
 MIT
+
+## Support
+
+If you found this SDK useful for your project, consider buying me a coffee! It helps me keep the reverse-engineering efforts going.
+
+<a href="https://www.buymeacoffee.com/gmacev" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
