@@ -40,6 +40,10 @@ export const LT_TRANSPORT_TYPE_MAP: Readonly<Record<string, VehicleType>> = {
   'Troleibusai': 'trolleybus',
   'Laivai': 'ferry',
   'Keltai': 'ferry',
+  // English values found in v2 data (e.g. Tauragė)
+  'Bus': 'bus',
+  'Trolleybus': 'trolleybus',
+  'Ferry': 'ferry',
 } as const;
 
 // =============================================================================
